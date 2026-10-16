@@ -1,0 +1,97 @@
+{
+  "Static_SA_Impersonation": {
+    "mean_latency_ms": 5.6706,
+    "p50_latency_ms": 0.0035,
+    "p95_latency_ms": 42.5037,
+    "p99_latency_ms": 42.505,
+    "latency_by_hop_ms": {
+      "1": 5.6708,
+      "2": 5.6705,
+      "3": 5.6704,
+      "4": 5.6706
+    },
+    "escalation_block_rate_pct": 0.0,
+    "draft_lock_enforcement_pct": 0.0,
+    "hitl_art14_compliance_pct": 0.0,
+    "loop_prevention_rate_pct": 0.0,
+    "legitimate_task_completion_pct": 100.0,
+    "ram_zeroization_rate_pct": 0.0,
+    "mean_wire_bytes": 89.0
+  },
+  "Raw_Bearer_Passthrough": {
+    "mean_latency_ms": 5.5816,
+    "p50_latency_ms": 0.0083,
+    "p95_latency_ms": 41.8075,
+    "p99_latency_ms": 41.809,
+    "latency_by_hop_ms": {
+      "1": 5.5796,
+      "2": 5.5806,
+      "3": 5.5819,
+      "4": 5.5842
+    },
+    "escalation_block_rate_pct": 0.0,
+    "draft_lock_enforcement_pct": 0.0,
+    "hitl_art14_compliance_pct": 0.0,
+    "loop_prevention_rate_pct": 0.0,
+    "legitimate_task_completion_pct": 100.0,
+    "ram_zeroization_rate_pct": 0.0,
+    "mean_wire_bytes": 123.3
+  },
+  "Centralized_RFC8693_IdP": {
+    "mean_latency_ms": 11.6406,
+    "p50_latency_ms": 5.817,
+    "p95_latency_ms": 53.9193,
+    "p99_latency_ms": 56.1117,
+    "latency_by_hop_ms": {
+      "1": 8.4888,
+      "2": 10.8926,
+      "3": 12.5384,
+      "4": 14.6425
+    },
+    "escalation_block_rate_pct": 50.0,
+    "draft_lock_enforcement_pct": 0.0,
+    "hitl_art14_compliance_pct": 0.0,
+    "loop_prevention_rate_pct": 0.0,
+    "legitimate_task_completion_pct": 100.0,
+    "ram_zeroization_rate_pct": 0.0,
+    "mean_wire_bytes": 160
+  },
+  "Client_Callback_Auth": {
+    "mean_latency_ms": 27.8501,
+    "p50_latency_ms": 27.8503,
+    "p95_latency_ms": 55.6602,
+    "p99_latency_ms": 55.6602,
+    "latency_by_hop_ms": {
+      "1": 0.0401,
+      "2": 18.5801,
+      "3": 37.1201,
+      "4": 55.6601
+    },
+    "escalation_block_rate_pct": 0.0,
+    "draft_lock_enforcement_pct": 0.0,
+    "hitl_art14_compliance_pct": 0.0,
+    "loop_prevention_rate_pct": 0.0,
+    "legitimate_task_completion_pct": 20.37,
+    "ram_zeroization_rate_pct": 0.0,
+    "mean_wire_bytes": 512
+  },
+  "Agent_Passport_Ours": {
+    "mean_latency_ms": 0.3653,
+    "p50_latency_ms": 0.3538,
+    "p95_latency_ms": 0.5367,
+    "p99_latency_ms": 0.743,
+    "latency_by_hop_ms": {
+      "1": 0.3167,
+      "2": 0.3152,
+      "3": 0.3746,
+      "4": 0.4544
+    },
+    "escalation_block_rate_pct": 100.0,
+    "draft_lock_enforcement_pct": 100.0,
+    "hitl_art14_compliance_pct": 100.0,
+    "loop_prevention_rate_pct": 100.0,
+    "legitimate_task_completion_pct": 100.0,
+    "ram_zeroization_rate_pct": 100.0,
+    "mean_wire_bytes": 2223.6
+  }
+}

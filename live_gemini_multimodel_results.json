@@ -1,0 +1,79 @@
+{
+  "gcp_project": "aniket-personal",
+  "vertex_location": "global",
+  "models_tested": 7,
+  "all_legitimate_authorized": true,
+  "all_escalations_blocked": true,
+  "results": [
+    {
+      "model": "gemini-2.5-flash",
+      "vertex_ai_llm_ms": 1524.49,
+      "passport_3hop_mint_and_verify_ms": 0.51,
+      "legitimate_http_status": 200,
+      "zeroization_receipt_present": true,
+      "confused_deputy_blocked": true,
+      "confused_deputy_jsonrpc_code": -32097,
+      "wire_header_bytes": 2154
+    },
+    {
+      "model": "gemini-2.5-pro",
+      "vertex_ai_llm_ms": 2235.84,
+      "passport_3hop_mint_and_verify_ms": 2.513,
+      "legitimate_http_status": 200,
+      "zeroization_receipt_present": true,
+      "confused_deputy_blocked": true,
+      "confused_deputy_jsonrpc_code": -32097,
+      "wire_header_bytes": 2144
+    },
+    {
+      "model": "gemini-3-flash-preview",
+      "vertex_ai_llm_ms": 3757.64,
+      "passport_3hop_mint_and_verify_ms": 0.541,
+      "legitimate_http_status": 200,
+      "zeroization_receipt_present": true,
+      "confused_deputy_blocked": true,
+      "confused_deputy_jsonrpc_code": -32097,
+      "wire_header_bytes": 2184
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "vertex_ai_llm_ms": 2719.16,
+      "passport_3hop_mint_and_verify_ms": 0.324,
+      "legitimate_http_status": 200,
+      "zeroization_receipt_present": true,
+      "confused_deputy_blocked": true,
+      "confused_deputy_jsonrpc_code": -32097,
+      "wire_header_bytes": 2154
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "vertex_ai_llm_ms": 2688.29,
+      "passport_3hop_mint_and_verify_ms": 0.327,
+      "legitimate_http_status": 200,
+      "zeroization_receipt_present": true,
+      "confused_deputy_blocked": true,
+      "confused_deputy_jsonrpc_code": -32097,
+      "wire_header_bytes": 2154
+    },
+    {
+      "model": "gemini-3.7-flash",
+      "vertex_ai_llm_ms": 2216.65,
+      "passport_3hop_mint_and_verify_ms": 0.425,
+      "legitimate_http_status": 200,
+      "zeroization_receipt_present": true,
+      "confused_deputy_blocked": true,
+      "confused_deputy_jsonrpc_code": -32097,
+      "wire_header_bytes": 2154
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "vertex_ai_llm_ms": 3246.85,
+      "passport_3hop_mint_and_verify_ms": 1.39,
+      "legitimate_http_status": 200,
+      "zeroization_receipt_present": true,
+      "confused_deputy_blocked": true,
+      "confused_deputy_jsonrpc_code": -32097,
+      "wire_header_bytes": 2154
+    }
+  ]
+}

@@ -1,0 +1,728 @@
+\documentclass[conference,10pt]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{listings}
+\usepackage{silence}
+\WarningFilter{latex}{Command \showhyphens}
+\usepackage{microtype}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{balance}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit}
+
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.95}
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\floatpagefraction}{0.85}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.85}
+
+\newtheorem{definition}{Definition}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+
+\definecolor{googleblue}{HTML}{1A73E8}
+\definecolor{googlegreen}{HTML}{1E8E3E}
+\definecolor{googlered}{HTML}{D93025}
+\definecolor{googleyellow}{HTML}{F9AB00}
+\definecolor{googlepurple}{HTML}{9334E6}
+\definecolor{bordergray}{HTML}{DADCE0}
+\definecolor{greentint}{HTML}{E6F4EA}
+\definecolor{bluetint}{HTML}{E8F0FE}
+\definecolor{redtint}{HTML}{FCE8E6}
+\definecolor{yellowtint}{HTML}{FEF7E0}
+\definecolor{codebg}{HTML}{F8F9FA}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=googleblue,
+    filecolor=googlepurple,
+    urlcolor=googleblue,
+    citecolor=googleblue
+}
+
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{bordergray},
+  breaklines=true,
+  breakatwhitespace=false,
+  columns=fullflexible,
+  keepspaces=true,
+  aboveskip=6pt,
+  belowskip=5pt,
+  belowcaptionskip=4pt,
+  xleftmargin=2pt,
+  xrightmargin=2pt
+}
+
+\begin{document}
+
+\title{Agent-Passport: Cryptographic Hop-Attenuated Macaroon Delegation, Autonomous System Path-Vector Loop Prevention, and Wire-Enforced Human-in-the-Loop Draft Locks for Multi-Agent A2A and MCP Swarms}
+
+\author{\IEEEauthorblockN{Aniket Agrawal}
+\IEEEauthorblockA{\textit{Google Cloud, Customer Engineering \& AI Architecture} \\
+Google Inc. \\
+\texttt{aniketagrawal@google.com}}
+}
+
+\maketitle
+
+\begin{abstract}
+As enterprise organizations transition from single-turn conversational assistants to hierarchical multi-agent swarms speaking the open Agent2Agent (A2A) protocol and the Model Context Protocol (MCP) across serverless infrastructures such as Google Cloud Run and Vertex AI Agent Engine, four coupled security, reliability, and regulatory bottlenecks emerge at the network transport boundary: (1) \emph{Dual-Identity Header Collision and Cross-Hop Privilege Escalation}, where forwarding raw user OAuth 2.0 bearer tokens across intermediate sub-agents violates the Principle of Least Privilege and collides with serverless infrastructure IAM tokens in standard \texttt{Authorization} headers, while centralized OAuth 2.0 Token Exchange (IETF RFC 8693) introduces $10\text{--}15$~ms of network round-trip latency per hop; (2) \emph{In-Memory Credential Persistence}, where Python and Node.js agent runtimes retain plaintext bearer strings in garbage-collected heap memory across asynchronous turns; (3) \emph{Cross-Agent Delegation Loops}, where cyclic A2A topologies induce unbounded token amplification and authentication deadlocks; and (4) \emph{Unenforced Prompt-Level Human-in-the-Loop (HITL) Governance}, where enterprise mandates requiring ``Draft-Only'' staging for executive communications or human co-signatures for high-risk Human Resources (HR) decisions under EU AI Act Article 14 rely solely on probabilistic system prompt instructions.
+
+We introduce \textbf{Agent-Passport}, a zero-trust cryptographic wire protocol and transport gateway middleware for A2A and MCP swarms. Agent-Passport unifies four verifiable mechanisms directly on HTTP/2 and JSON-RPC 2.0 transport frames: (i) \emph{Non-Interactive Chained HMAC-SHA256 Macaroon Attenuation} (paired with an asymmetric Ed25519 federation mode for untrusted cross-domain boundaries), Dual-Header Serverless Passthrough (\texttt{X-Serverless-Authorization} + \texttt{X-Agent-Passport-Macaroon}), and Gateway-Wrapped Encrypted Backend Credentials (\texttt{X-Encrypted-Backend-Credential}), enabling any intermediate agent to monotonically narrow OAuth scopes, execution modes, and conjunctive parameter predicates in $\mathcal{O}(1)$ local CPU time ($\approx 4.2~\mu\text{s}$/hop holder attenuation; $+4.6~\mu\text{s}$/hop gateway verification) without contacting a central Identity Provider (IdP) or observing plaintext root OAuth tokens; (ii) \emph{Sender-Constrained BGP-Inspired Autonomous System Path-Vector (\texttt{AS-PATH}) Loop Detection} via \texttt{X-A2A-Origin-Path-Vector}, deterministically terminating cyclic delegation graphs at the wire boundary via JSON-RPC error \texttt{-32097}; (iii) \emph{Protocol-Level Stage-and-Hold Draft Locks}, intercepting mutating tool calls under \texttt{DRAFT\_STAGED} or \texttt{COMMIT\_WITH\_HITL} caveats to return \texttt{HTTP 202 Accepted} with a signed \texttt{X-HITL-Draft-Lock-Token} or \texttt{HTTP 428 Precondition Required} until a human verifier provides a replay-protected Ed25519/HMAC co-signature over the RFC 8785 canonical payload digest in \texttt{X-HITL-Human-Cosignature}; and (iv) \emph{Deferred In-Place Buffer Zeroization}, decrypting backend credentials only after MAC and policy verification into a pre-allocated \texttt{mlock}-pinned \texttt{bytearray} passed via \texttt{memoryview}, overwriting physical buffer bytes via \texttt{ctypes.memset} upon turn exit, and emitting a signed \texttt{X-Passport-Zeroization-Receipt}. Across $N = 1{,}200$ uniformly hop-stratified enterprise traces ($n_k = 300$ per hop for $k \in \{1, 2, 3, 4\}$), Agent-Passport Mode A achieves an overall mean verification latency of $0.2919 \pm 0.019$~ms ($p_{99} = 0.5240$~ms) and a 4-hop mean of $0.2988 \pm 0.021$~ms ($0.5006 \pm 0.034$~ms overall and $0.6032 \pm 0.039$~ms at 4 hops in Ed25519 Mode B)---a $3.3\times$ speedup at 4 hops over a local in-memory RFC 8693 JWT/HMAC IdP ($0.9896$~ms) and a $139.5\times$ speedup over networked RFC 8693 token exchange ($41.6780$~ms)---while delivering $100.0\%$ enforcement across all five security and governance invariants.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Agent2Agent (A2A) Protocol, Model Context Protocol (MCP), Macaroons, Zero-Trust Architecture, Least-Privilege Delegation, BGP AS-Path Loop Prevention, Human-in-the-Loop Governance, EU AI Act Article 14, Cryptographic Memory Zeroization.
+\end{IEEEkeywords}
+
+\section{Introduction}
+\IEEEPARstart{E}{nterprise} artificial intelligence is undergoing a structural architectural transition from monolithic, single-model chat interfaces to distributed, multi-agent ecosystems~\cite{gemini2025report, a2a2025spec, anthropic2024mcp, tomasev2026delegation}. In modern production deployments on Google Cloud Gemini Enterprise, Vertex AI Agent Development Kit (ADK), and Cloud Run, a top-level orchestrator agent decomposes complex enterprise objectives and delegates specialized sub-tasks across domain-specific peer agents via the open \textbf{Agent2Agent (A2A)} protocol~\cite{a2a2025spec}, which in turn invoke transactional tools exposed by enterprise systems of record (such as SAP S/4HANA, Workday, Microsoft 365 Graph, Jira, and BigQuery) via the \textbf{Model Context Protocol (MCP)}~\cite{anthropic2024mcp}.
+
+While A2A and MCP standardize capability advertisement (\texttt{.well-known/agent.json} and \texttt{tools/list}) and task invocation (\texttt{tasks/send} and \texttt{tools/call}), production deployments across regulated enterprise environments expose four severe architectural vulnerabilities at the intersection of cloud-native identity management, multi-hop delegation, and regulatory compliance:
+
+\begin{enumerate}
+    \item \textbf{Dual-Identity Header Collision and Cross-Hop Confused Deputy Escalation:} When an enterprise employee authenticates into a primary orchestrator agent (e.g., via OAuth 2.0 / OpenID Connect~\cite{hardy1988confused, jones2015rfc7522}) and that orchestrator invokes a downstream A2A sub-agent or FastMCP server hosted on serverless infrastructure (such as Google Cloud Run~\cite{tsao2023cloudrun}), two orthogonal authentication contexts must traverse the same HTTP/2 transport connection: (a) the cloud platform's container-to-container infrastructure identity (a Google-signed OIDC ID token validating IAM permission \texttt{roles/run.invoker}), and (b) the end-user's attenuated enterprise authority. In practice, two failure modes arise: (i) standard A2A and MCP client SDKs default to placing infrastructure OIDC tokens in \texttt{Authorization: Bearer}~\cite{jones2012rfc6750}, colliding directly with user OAuth tokens, and (ii) even when deployments pass the Cloud Run IAM token in \texttt{X-Serverless-Authorization}~\cite{tsao2023cloudrun} and forward the user's OAuth token in \texttt{Authorization}, intermediate sub-agents either receive the user's raw root OAuth token in plaintext (enabling Confused Deputy privilege escalation~\cite{hardy1988confused} or direct SaaS API harvesting under indirect prompt injection~\cite{greshake2023promptinjection, zhan2024injecagent, debenedetti2024agentdojo}) or must execute $k$ synchronous OAuth 2.0 Token Exchange round-trips (IETF RFC 8693~\cite{jones2020rfc8693, raut2026transaction, prasad2026actor}, adding $k \times 10\text{--}15$~ms of blocking network latency).
+    \item \textbf{Garbage-Collected Heap Credential Residency:} Even when user bearer tokens are passed via custom request headers or ADK \texttt{before\_tool\_callback} hooks, standard high-level runtimes (Python, Node.js, Java) deserialize plaintext bearer credentials into immutable string objects during HTTP header parsing. These objects persist in garbage-collected heap memory across asynchronous coroutines, long-running multi-tenant container instances, and crash core dumps long after a reasoning turn terminates~\cite{chow2005shredding, yang2017dse}, violating strict enterprise zero-trust credential hygiene~\cite{nist2020zerotrust} and ISO/IEC 27001 cryptographic key lifecycle controls.
+    \item \textbf{Cyclic A2A Delegation Loops and Callback Deadlocks:} In dynamic multi-agent meshes where peer agents discover capabilities via \texttt{.well-known/agent.json} Agent Cards, cyclic routing dependencies frequently emerge (e.g., $\text{Orchestrator } A_1 \to \text{Analytics Agent } A_2 \to \text{Data Quality Agent } A_3 \to A_1$). Neither A2A nor MCP defines a transport-layer path-vector header analogous to Border Gateway Protocol (BGP-4) Autonomous System Path (\texttt{AS\_PATH}) attributes~\cite{rekhter2006bgp}. Furthermore, when agents implement ad-hoc token refresh inside client-side \texttt{before\_tool\_callback} interceptors without wire-level hop provenance, mutual recursion triggers synchronous callback deadlocks, runaway token expenditure, and cascading container exhaustion.
+    \item \textbf{Probabilistic Prompt-Only Human-in-the-Loop (HITL) Governance:} Enterprise governance policies and statutory frameworks---most notably \textbf{Article 14 (Human Oversight) of the European Union Artificial Intelligence Act (Regulation (EU) 2024/1689)}~\cite{euaiact2024} for high-risk AI systems in employment, worker management, and executive decision support---mandate verifiable human review prior to committing high-consequence actions. In current agent frameworks, such restrictions are specified merely as natural-language instructions in the system prompt (e.g., \emph{``Never send an email directly; only create a draft''}), while the underlying MCP server exposes the live mutating tool (\texttt{m365.mail.send} or \texttt{workday.calibration.commit}). A single hallucination or adversarial prompt injection bypasses the prompt instruction and executes an irreversible external mutation.
+\end{enumerate}
+
+\begin{figure*}[t]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+    font=\sffamily\scriptsize,
+    box/.style={rectangle, rounded corners=4pt, draw=googleblue, thick, fill=bluetint, align=center, minimum height=1.35cm, minimum width=4.6cm},
+    gateway/.style={rectangle, rounded corners=4pt, draw=googlegreen, very thick, fill=greentint, align=center, minimum height=1.45cm, minimum width=5.2cm},
+    vault/.style={rectangle, rounded corners=4pt, draw=googlered, thick, fill=redtint, align=center, minimum height=1.15cm, minimum width=4.8cm},
+    ram/.style={rectangle, rounded corners=4pt, draw=googlepurple, thick, fill=yellowtint, align=center, minimum height=1.15cm, minimum width=4.8cm},
+    arrow/.style={-{Stealth[length=2.2mm,width=1.6mm]}, thick, draw=googleblue},
+    secarrow/.style={-{Stealth[length=2.2mm,width=1.6mm]}, thick, draw=googlegreen},
+    blockarrow/.style={-{Stealth[length=2.2mm,width=1.6mm]}, thick, dashed, draw=googlered}
+]
+
+% Top Row Nodes with wide horizontal separation (2.1cm) so labels never collide with borders
+\node[box] (hop1) {\textbf{Hop 1: Root Orchestrator ($A_1$)}\\Mints $\mathcal{P}_1$: $S_1 \subseteq S_0, m_1=\texttt{COMMIT\_WITH\_HITL}, A_{\text{next},1}=A_2$\\ $H_0 = \text{HMAC}_{K_{\text{root}}}(\text{Canon}(\text{mode}, \eta, u, \tau_0, \tau_{\exp}))$\\ $H_1 = \text{HMAC}_{H_0}(\text{Canon}(C_1) \parallel \text{Canon}(\pi_1))$};
+
+\node[box, right=2.1cm of hop1] (hop2) {\textbf{Hop 2: Untrusted Sub-Agent ($A_2$)}\\Holds $H_1$ only ($K_{\text{root}}$ never shared)\\Attenuates $C_2$: $S_2 \subseteq S_1, m_2 \preceq m_1, P_2, A_{\text{next},2}=\mathcal{G}$\\ $H_2 = \text{HMAC}_{H_1}(\text{Canon}(C_2) \parallel \text{Canon}(\pi_2))$};
+
+\node[gateway, right=2.1cm of hop2] (mcp) {\textbf{Hop 3: Trusted Leaf MCP Gateway ($\mathcal{G}$)}\\1. Recomputes $H_0 \dots H_k$ (or Ed25519 $\sigma_0 \dots \sigma_k, pk_{k+1}=pk_{\mathcal{G}}$)\\2. Checks $\bigwedge_{i=1}^k P_i(\text{params})$, $S_i \subseteq S_{i-1}$, $m_i \preceq m_{i-1}$\\3. Checks Sender-Bound \texttt{AS-PATH} \& $h_i \ge 0$};
+
+% Bottom Row Nodes
+\node[box, below=0.85cm of hop1, draw=googlered, fill=redtint] (loop) {\textbf{BGP Loop \& Privilege Guard}\\ $\bullet$ Cycle $\pi_i.A_i \in \mathcal{V}_{\text{seen}}$ or $C_{i-1}.A_{\text{next}} \neq \pi_i.A_i \to \texttt{-32097}$\\ $\bullet$ $S_i \not\subseteq S_{i-1}$ or $\neg P_i(\text{params}) \to \texttt{-32098}$};
+
+\node[ram, below=0.85cm of hop2] (zero) {\textbf{Deferred In-Place Zeroizer ($\mathcal{B}$)}\\Post-Auth AEAD Decrypt $\to$ \texttt{memoryview(B)}\\Exit: \texttt{ctypes.memset(p,0,L)} + Receipt};
+
+\node[vault, below=0.85cm of mcp] (hitl) {\textbf{Stage-and-Hold HITL Draft Vault}\\ $\bullet$ \texttt{DRAFT\_STAGED} $\to$ \texttt{HTTP 202} ($\mathcal{L}_{\text{draft}}, \tau_{\text{draft\_exp}}$)\\ $\bullet$ Unsigned / Replayed $\eta \to$ \texttt{HTTP 428} (\texttt{-32095})};
+
+% Arrows with concise non-overlapping labels
+\draw[arrow] (hop1) -- node[above=2pt, align=center, font=\ttfamily\tiny] {4-Header Frame ($\mathcal{P}_1$)\\X-Serverless-Auth\\X-Encrypted-Cred\\X-Passport-Macaroon\\X-A2A-Path-Vector} (hop2);
+\draw[secarrow] (hop2) -- node[above=2pt, align=center, font=\ttfamily\tiny] {Attenuated Frame ($\mathcal{P}_2$)\\X-Serverless-Auth\\X-Encrypted-Cred\\X-Passport-Macaroon\\X-A2A-Path-Vector} (mcp);
+\draw[blockarrow] (mcp) -- node[right=2pt, font=\ttfamily\tiny] {Stage / Verify HITL} (hitl);
+\draw[secarrow] (mcp.south west) -- node[above, sloped, font=\ttfamily\tiny] {Post-Auth Zeroize} (zero.north east);
+\draw[blockarrow] (hop2.south) -- node[left=2pt, font=\ttfamily\tiny] {Local Loop Guard} (loop.east);
+
+\end{tikzpicture}%
+}
+\caption{System architecture of the \textbf{Agent-Passport} cryptographic wire protocol across a 3-hop A2A and MCP enterprise topology (wire header names abbreviated inside callout boxes for space). Untrusted intermediate sub-agents ($A_i, i \ge 2$) never possess $K_{\text{root}}$ or plaintext OAuth tokens; they attenuate caveats offline in $\mathcal{O}(1)$ cryptographic time using tail signature $H_{i-1}$ (or ephemeral Ed25519 key $sk_i$ in Mode B) while forwarding the gateway-encrypted credential (\texttt{X-Encrypted-Backend-Credential}). Full chain verification, conjunctive predicate evaluation, and deferred in-place buffer zeroization execute at the trusted leaf gateway $\mathcal{G}$.}
+\label{fig:architecture}
+\end{figure*}
+
+To resolve these four vulnerabilities simultaneously within a unified, standards-compatible wire protocol, we present \textbf{Agent-Passport} (Fig.~\ref{fig:architecture}), a cryptographic capability attenuation, sender-constrained path-vector loop prevention, wire-enforced HITL draft-lock, and turn-scoped buffer zeroization middleware for A2A and MCP multi-agent swarms.
+
+The primary contributions of this paper are:
+\begin{itemize}
+    \item \textbf{Dual-Mode Chained Macaroon \& Ed25519 Delegation with Encrypted Credential Passthrough:} We formalize a cryptographic capability protocol building upon Macaroons~\cite{birgisson2014macaroons}, Eclipse Biscuit, and recent agent delegation architectures~\cite{prakash2026aip, niyikiza2026aat, tomasev2026delegation} for A2A and MCP JSON-RPC 2.0 transport frames. By decoupling serverless container IAM authentication (\texttt{X-Serverless-Authorization}~\cite{tsao2023cloudrun, salowey2026wimse}) from contextual capability attenuation (\texttt{X-Agent-Passport-Macaroon}) and wrapping the backend OAuth token in an AES-256-GCM ciphertext (\texttt{X-Encrypted-Backend-Credential}) bound to $\text{AAD} = \eta \parallel u \parallel A_{\text{self}}$ and decryptable only by the leaf MCP gateway $\mathcal{G}$, untrusted intermediate A2A agents $A_i$ ($i \ge 2$) never observe plaintext user OAuth tokens or $K_{\text{root}}$. Any intermediate agent can non-interactively restrict allowed OAuth scopes $S_i \subseteq S_{i-1}$, execution modes $m_i \preceq m_{i-1}$, conjunctive parameter predicates $P_i$, and remaining hop budgets $h_i < h_{i-1}$ ($h_i \in \mathbb{N}_0$) in $\mathcal{O}(1)$ cryptographic compute ($\approx 4.2~\mu\text{s}$/hop holder attenuation and $+4.6~\mu\text{s}$/hop gateway verification in symmetric HMAC Mode A; $\approx 48.5~\mu\text{s}$/hop holder attenuation and $+68.4~\mu\text{s}$/hop gateway verification in cross-domain Ed25519 Mode B).
+    \item \textbf{Sender-Constrained BGP-Inspired Autonomous System Path-Vector (\texttt{AS-PATH}) Loop Detection:} Each parent hop $i-1$ cryptographically commits to the intended next-hop agent identifier $A_{\text{next},i-1}$ inside caveat $C_{i-1}$, while leaf gateway $\mathcal{G}$ binds the caller's platform-authenticated OIDC identity ($\text{OIDC}_{\text{srv}}.\text{sub}$) to the terminal hop $\pi_k.A_k$ (and verifies $pk_{k+1} = pk_{\mathcal{G}}$ in Mode B), enabling stateless $\mathcal{O}(k)$ cycle detection that deterministically aborts cyclic A2A topologies via JSON-RPC error code \texttt{-32097}.
+    \item \textbf{Wire-Enforced Two-Phase Stage-and-Hold HITL Draft Lock with Atomic Nonce Consumption:} Mutating MCP calls carrying $m_k = \texttt{DRAFT\_STAGED}$ are intercepted at the protocol gateway, persisted to a SQLite Write-Ahead Logging (WAL) or Redis/Spanner staging vault under an asynchronous review TTL $\tau_{\text{draft\_exp}}$, and returned with \texttt{HTTP 202 Accepted} and a signed \texttt{X-HITL-Draft-Lock-Token} ($\mathcal{L}_{\text{draft}}$). Calls carrying $m_k = \texttt{COMMIT\_WITH\_HITL}$ or releasing a staged draft with $\mathcal{L}_{\text{draft}}$ require a human reviewer signature over $(\text{rev}, \eta, \text{tool}, d)$ where $d = \operatorname{SHA-256}(\text{Canon}(\text{tool}, \text{params}))$ in \texttt{X-HITL-Human-Cosignature} followed by atomic one-time consumption keyed uniquely on $\eta$, blocking unsigned or replayed mutations with \texttt{HTTP 428 Precondition Required} (JSON-RPC \texttt{-32095}).
+    \item \textbf{Deferred In-Place Buffer Zeroization:} We design a turn-scoped allocator (\texttt{TurnScopedZeroizingBuffer}) that defers credential decryption until after MAC, loop, scope, predicate, and HITL verification succeed, writes plaintext bytes directly into an \texttt{mlock}-pinned mutable \texttt{bytearray} $\mathcal{B}$ exposed via zero-copy \texttt{memoryview}, invokes \texttt{ctypes.memset(p, 0, L)} upon turn exit (or on AEAD tag failure) with a post-wipe verification read $h_{\text{zero}} = \operatorname{SHA-256}(\mathcal{B})$~\cite{chow2005shredding, yang2017dse}, and emits a signed \texttt{X-Passport-Zeroization-Receipt}.
+    \item \textbf{Uniformly Stratified Empirical Verification:} Across $N = 1{,}200$ uniformly hop-stratified enterprise traces ($n_k = 300$ per hop for $k \in \{1, 2, 3, 4\}$ across 6 industry workloads), 7 baseline configurations across 6 paradigm families (B1--B6, including local in-memory vs.\ networked RFC 8693, Classical Macaroons~\cite{birgisson2014macaroons}, and Public-Key IBCTs~\cite{prakash2026aip, niyikiza2026aat}), and live evaluations across official Google Cloud Vertex AI Gemini models (\texttt{gemini-2.5-flash}, \texttt{gemini-2.5-pro}, and \texttt{gemini-3-flash-preview}), Agent-Passport achieves $0.2919 \pm 0.019$~ms overall mean verification latency ($0.5006 \pm 0.034$~ms in Mode B) alongside $100.0\%$ enforcement across all security invariants.
+\end{itemize}
+
+\begin{table*}[t]
+\centering
+\caption{Architectural Comparison of Multi-Agent Identity, Delegation, and Governance Paradigms Across A2A and MCP Swarms}
+\label{tab:related_comparison}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccccc}
+\toprule
+\textbf{Protocol / Architectural Feature} & \textbf{Ambient OAuth} & \textbf{RFC 8693 IdP + DPoP/RAR} & \textbf{Classical} & \textbf{Public-Key IBCTs} & \textbf{Client Callback} & \textbf{App-Layer IFC} & \textbf{Agent-Passport} \\
+ & \textbf{(RFC 6750~\cite{jones2012rfc6750})} & \textbf{(\cite{jones2020rfc8693, fett2023dpop, lodderstedt2023rar})} & \textbf{Macaroons~\cite{birgisson2014macaroons}} & \textbf{(Biscuit / AIP~\cite{prakash2026aip} / AAT~\cite{niyikiza2026aat})} & \textbf{Forwarding} & \textbf{(CaMeL~\cite{debenedetti2025camel}/FIDES~\cite{costa2025fides})} & \textbf{(Ours: Mode A / Mode B)} \\
+\midrule
+Serverless IAM + Encrypted OAuth Separation & No (Plaintext)\textsuperscript{$\dagger$} & Partial (IdP Swap)\textsuperscript{$\dagger$} & No & No & No (Plaintext) & No & \textbf{Yes (Native 4-Header Wire)} \\
+Non-Interactive $\mathcal{O}(1)$ Hop Attenuation (Zero IdP RPC) & No & No ($k$ IdP RPCs) & Yes ($\approx 4.0~\mu$s/hop) & Yes ($\approx 64.0~\mu$s/hop) & No ($k$ Callbacks) & No & \textbf{Yes ($4.2 / 48.5~\mu$s/hop; $291.9~\mu$s e2e)} \\
+Gateway-Encrypted OAuth Passthrough (Byzantine Safe) & No (Plaintext) & Yes (Per-Hop Swap) & No & No & No (Plaintext) & No & \textbf{Yes (AEAD $K_{\text{vault}}$ Wrapped)} \\
+Monotonic Scope, Conjunctive $P_i$, \& Mode Lattice & No & Scope + RAR~\cite{lodderstedt2023rar}\textsuperscript{$\S$} & Conjunctive Caveats & Custom Datalog / \texttt{cnf}\textsuperscript{$\S$} & No & Planner Taint & \textbf{Yes ($\bigwedge_{i=1}^k P_i$ \& $m_i \preceq m_{i-1}$)} \\
+OIDC-Bound BGP \texttt{AS-PATH} Loop Termination & No & No & No & Custom Datalog (No OIDC Bind)\textsuperscript{$\S$} & No (Deadlocks) & No & \textbf{Yes ($\text{OIDC}_{\text{srv}} = \pi_k$ \& \texttt{-32097})} \\
+Wire-Enforced HITL Stage-and-Hold (\texttt{HTTP 202 / 428}) & No & No & No & No & No & Prompt/Planner & \textbf{Yes (Ed25519/HMAC + WAL)} \\
+Deferred Zero-Copy Buffer Zeroization (\texttt{ctypes.memset}) & No (GC Heap) & No (GC Heap) & No (GC Heap) & No (GC Heap) & No (GC Heap) & No (GC Heap) & \textbf{Yes (\texttt{memoryview} + Post-Read)} \\
+\bottomrule
+\multicolumn{8}{l}{\tiny \textsuperscript{$\dagger$}Cloud Run supports \texttt{X-Serverless-Authorization}~\cite{tsao2023cloudrun} to separate container IAM from \texttt{Authorization}, but RFC 6750 exposes plaintext user OAuth tokens to intermediate agents while RFC 8693 requires $k$ synchronous IdP RPCs.} \\
+\multicolumn{8}{l}{\tiny \textsuperscript{$\S$}RFC 9396 RAR~\cite{lodderstedt2023rar} and Datalog checks in Eclipse Biscuit/AIP~\cite{prakash2026aip} or \texttt{cnf} depth claims in AAT~\cite{niyikiza2026aat} can encode custom policies, but do not natively bind Cloud Run $\text{OIDC}_{\text{srv}}.\text{sub} = \pi_k.A_k$ to a sender-committed \texttt{AS-PATH} or enforce HTTP 202/428 draft locks.}
+\end{tabular}%
+}
+\end{table*}
+
+\section{Background and Related Work}
+Table~\ref{tab:related_comparison} contrasts Agent-Passport against six prevailing identity, delegation, and safety paradigms in distributed systems and agentic AI.
+
+\subsection{OAuth 2.0, Proof-of-Possession, Workload Identity, and IBCTs}
+Standard OAuth 2.0 Bearer Tokens (IETF RFC 6750~\cite{jones2012rfc6750}) grant ambient authority to any holder. Sender-constrained OAuth profiles---specifically Demonstrating Proof-of-Possession (DPoP, IETF RFC 9449~\cite{fett2023dpop}) and Mutual-TLS Client Certificate-Bound Access Tokens (IETF RFC 8705~\cite{campbell2020mtls})---prevent raw token replay across a single transport hop, while workload identity frameworks such as CNCF SPIFFE/SPIRE and the IETF Workload Identity in Multi-System Environments (WIMSE) architecture~\cite{salowey2026wimse} authenticate service-to-service workloads (analogous to Google Cloud Run's \texttt{X-Serverless-Authorization} OIDC header~\cite{tsao2023cloudrun}). To narrow user authority across microservice hops, IETF RFC 8693 (OAuth 2.0 Token Exchange~\cite{jones2020rfc8693}), OAuth 2.0 Rich Authorization Requests (RAR, IETF RFC 9396~\cite{lodderstedt2023rar}), and agent extensions such as Transaction Tokens for Agents~\cite{raut2026transaction} and Cryptographically Verifiable Actor Chains~\cite{prasad2026actor} exchange tokens via a central Authorization Server. While effective for coarse 1-hop APIs, multi-agent A2A swarms traverse $k \in \{3, 4\}$ dynamic hops per turn; even when Cloud Run's \texttt{X-Serverless-Authorization} frees the \texttt{Authorization} header from IAM collision~\cite{tsao2023cloudrun}, forwarding user tokens via RFC 6750 exposes plaintext root credentials to intermediate agents, whereas RFC 8693 incurs $k$ blocking IdP round-trips.
+
+Birgisson et al.~\cite{birgisson2014macaroons} introduced \emph{Macaroons}, decentralized credentials employing nested HMAC chains for offline caveat attenuation, while Eclipse Biscuit extended offline attenuation to public-key Ed25519 signatures and Datalog checks. Recently, Toma\v{s}ev et al.~\cite{tomasev2026delegation}, Prakash (\emph{AIP}~\cite{prakash2026aip}), and Niyikiza (\emph{AAT}~\cite{niyikiza2026aat}) proposed Macaroon- and Biscuit-inspired identity-bound capability tokens (IBCTs) for AI agents. While application-level Datalog rules in Biscuit/AIP~\cite{prakash2026aip} or \texttt{cnf}/depth claims in AAT~\cite{niyikiza2026aat} can express custom mode predicates or hop limits, Table~\ref{tab:related_comparison} highlights four wire-protocol mechanisms newly unified by Agent-Passport: (1) 4-header serverless separation with AES-256-GCM $K_{\text{vault}}$-encrypted backend OAuth passthrough; (2) cryptographic binding of the serverless platform's authenticated caller identity ($\text{OIDC}_{\text{srv}}.\text{sub} = \pi_k.A_k$) to a sender-constrained BGP \texttt{AS-PATH} vector (\texttt{-32097}); (3) two-phase stateful HTTP 202 / 428 HITL draft locks with asynchronous review TTLs and atomic nonce consumption; and (4) deferred post-auth zero-copy \texttt{memoryview} buffer zeroization.
+
+\subsection{Planner-Layer Information-Flow Control vs.\ Wire Containment}
+Recent studies demonstrate that tool-augmented LLMs are vulnerable to indirect prompt injection across agent and MCP benchmarks~\cite{greshake2023promptinjection, zhan2024injecagent, debenedetti2024agentdojo, zhang2025asb}. Planner-layer defenses such as CaMeL~\cite{debenedetti2025camel}, FIDES~\cite{costa2025fides}, and Progent~\cite{shi2025progent} track data-flow taint labels and privilege policies inside the orchestrator's local control loop. At the MCP transport layer, Maloyan and Namiot~\cite{maloyan2026mcpsec} analyze protocol-level prompt injection vulnerabilities and introduce \texttt{AttestMCP} for single-hop server-to-client capability message attestation. Importantly, planner-layer Information-Flow Control (IFC), server attestation (\texttt{AttestMCP}), and Agent-Passport's multi-hop caller delegation are \emph{complementary defense layers}: planner-layer IFC (CaMeL/FIDES) prevents confused-deputy argument misuse \emph{within} an already-permitted scope by tracking untrusted data provenance before the orchestrator synthesizes tool predicates $P_1$, whereas Agent-Passport enforces those synthesized predicates $P_1 \dots P_k$, scope subsets $S_k$, and HITL draft locks cryptographically at the remote MCP network boundary even if a downstream sub-agent runtime $A_i$ ($i \ge 2$) is completely compromised.
+
+\section{Threat Model and Formal Protocol Specification}
+
+\subsection{System and Adversary Model (Key \& Network Boundaries)}
+We consider a distributed topology of autonomous agents $\mathcal{A} = \{A_1, A_2, \dots, A_n\}$ communicating via A2A over HTTP/2 and invoking tools exposed by trusted leaf MCP gateways $\mathcal{G} = \{G_1, \dots, G_m\}$. An enterprise human principal $u$ initiates a workflow at root orchestrator $A_1$ with initial authorized OAuth scopes $S_0 \subseteq \Sigma$ and initial execution mode $m_0 \in \mathcal{M}$.
+
+To eliminate any architectural contradiction between symmetric key distribution and intermediate sub-agent compromise, we enforce two strict cryptographic separation invariants:
+\begin{enumerate}
+    \item \textbf{Key Custody Boundary \& Genesis Base Case (Mode A vs.\ Mode B):} At hop $1$, the trusted root minting service at $A_1$ validates the caller's initial OAuth grant $(S_0, m_0)$ and enforces the genesis base case $S_1 \subseteq S_0$ and $m_1 \preceq m_0$ before issuing $C_1$. In \emph{Mode A (Intra-Enterprise Shared-Anchor HMAC)}, the 256-bit root key $K_{\text{root}}$ is held \textbf{exclusively} by the root minting service at $A_1$ and trusted leaf MCP enforcement gateways $\mathcal{G}$ (or isolated Envoy sidecar proxies). Untrusted intermediate A2A sub-agents $A_i$ ($i \ge 2$) \textbf{never} possess $K_{\text{root}}$; they receive only the single tail authenticator $H_{i-1}$ alongside $(\vec{C}_{i-1}, \vec{\Pi}_{i-1})$, perform an $\mathcal{O}(i)$ local hash-set scan over $\vec{\Pi}_{i-1}$ for loop prevention, and append caveat $C_i$ in $\mathcal{O}(1)$ cryptographic time via Eq.~\eqref{eq:hi}, while full chain verification (Algorithm~1) executes solely at $\mathcal{G}$. In \emph{Mode B (Cross-Domain Public-Key Ed25519 Federation)}, where leaf gateways belong to external organizations that cannot share $K_{\text{root}}$, root $A_1$ signs with $sk_{\text{root}}$ (verified via public JWKS key $pk_{\text{root}}$), each intermediate hop $i \in \{1, \dots, k-1\}$ delegates via an ephemeral Ed25519 holder keypair $(sk_{i+1}, pk_{i+1})$ transmitted over the point-to-point mTLS/A2A channel to $A_{\text{next},i}$, and terminal hop $i = k$ binds the static leaf gateway public key $pk_{k+1} = pk_{\mathcal{G}}$.
+    \item \textbf{Gateway-Wrapped Backend OAuth Credential (\texttt{X-Encrypted-Backend-Credential}):} Rather than forwarding the user's raw third-party SaaS OAuth bearer token in plaintext across intermediate sub-agents, $A_1$ encrypts the raw credential (or a vault-bound OAuth refresh handle for asynchronous 24-hour HITL reviews whose duration exceeds standard 1-hour SaaS access token TTLs) under an audience-scoped leaf-gateway vault key $K_{\text{vault}}$ using authenticated AES-256-GCM (96-bit IV prepended as $\texttt{<iv\_hex>.<ciphertext\_hex>.<tag\_hex>}$) bound to associated data $\text{AAD} = \text{UTF8}(\eta_{\text{hex}} \parallel \text{`:`} \parallel u \parallel \text{`:`} \parallel A_{\text{self}})$. Intermediate sub-agents $A_i$ ($i \ge 2$) observe only the opaque ciphertext and cannot invoke external SaaS REST APIs directly; furthermore, backend MCP servers accept traffic exclusively through $\mathcal{G}$ over mTLS / VPC Service Controls.
+\end{enumerate}
+
+\subsection{Formal Definitions and Cryptographic Construction}
+
+\begin{definition}[Execution Mode Lattice]
+\label{def:lattice}
+Let $(\mathcal{M}, \preceq)$ be a totally ordered security lattice of agent execution modes defined by:
+{\footnotesize
+\begin{equation}
+\begin{aligned}
+&\texttt{READ\_ONLY}\;(1) \prec \texttt{DRAFT\_STAGED}\;(2) \\
+&\quad \prec \texttt{COMMIT\_WITH\_HITL}\;(3) \prec \texttt{LIVE\_AUTONOMOUS}\;(4)
+\end{aligned}
+\end{equation}}
+with rank function $\operatorname{rank}: \mathcal{M} \to \{1, 2, 3, 4\}$. A mode transition from hop $i-1$ to hop $i$ is valid if and only if $\operatorname{rank}(m_i) \le \operatorname{rank}(m_{i-1})$.
+\end{definition}
+
+\begin{definition}[Dual-Mode Chained Agent-Passport Token]
+\label{def:passport}
+An Agent-Passport token at delegation depth $k \ge 1$ is a tuple $\mathcal{P}_k = (\text{mode}, \eta, u, \tau_0, \tau_{\exp}, \vec{C}_k, \vec{\Pi}_k, \Phi_k)$, where $\text{mode} \in \{\texttt{A}, \texttt{B}\}$, $\eta \in \{0,1\}^{128}$ is a 128-bit cryptographic nonce (serialized as 32 lowercase ASCII hex chars), $u \in \Sigma^*$ is the root principal identifier, $\tau_0, \tau_{\exp} \in \mathbb{N}$ are Unix millisecond issuance and expiration bounds, $\vec{C}_k = (C_1, \dots, C_k)$ is a non-empty sequence of contextual caveats with $C_i = (\text{hop\_index}=i, S_i, m_i, P_i, h_i, A_{\text{next},i})$ (where $i \in \mathbb{N}^+$ is the hop index, $S_i \subseteq \Sigma$ is the scope set, $m_i \in \mathcal{M}$ is the execution mode, $P_i: \text{Args} \to \{\text{true}, \text{false}\}$ is a conjunctive parameter predicate map, $h_i \in \mathbb{N}_0$ is the non-negative remaining hop budget \emph{after} hop $i$, and $A_{\text{next},i} \in \mathcal{A} \cup \mathcal{G}$ is the sender-constrained target agent identifier for the next hop), and $\vec{\Pi}_k = (\pi_1, \dots, \pi_k)$ is the Autonomous System Path-Vector with $\pi_i = (A_i, \delta_i, \tau_i)$ (where $A_i \in \mathcal{A}$ is the caller agent ASN, $\delta_i \in \Sigma^*$ is its trust domain, and $\tau_i \in \mathbb{N}$ is the hop timestamp satisfying $\tau_0 \le \tau_1 \le \dots \le \tau_k \le \tau_{\exp}$). The cryptographic authenticator $\Phi_k$ is defined by the operating mode:
+\begin{itemize}
+    \item \textbf{Mode A (Symmetric Chained HMAC-SHA256):} $\Phi_k = H_k \in \{0,1\}^{256}$ is the tail HMAC computed recursively over RFC 8785 canonical JSON objects $\operatorname{Canon}(\cdot)$ via:
+    {\scriptsize
+    \begin{align}
+    H_0 &= \operatorname{HMAC-SHA256}\!\left(K_{\text{root}},\; \operatorname{Canon}(\text{mode},\eta,u,\tau_0,\tau_{\exp})\right) \label{eq:h0} \\
+    H_i &= \operatorname{HMAC-SHA256}\!\left(H_{i-1},\; \operatorname{Canon}(C_i) \parallel \operatorname{Canon}(\pi_i)\right) \label{eq:hi}
+    \end{align}}
+    \item \textbf{Mode B (Public-Key Ed25519 Ephemeral Key Chaining):} $\Phi_k = \vec{\Sigma}_k = ((pk_1, \sigma_0), (pk_2, \sigma_1), \dots, (pk_{k+1}, \sigma_k))$, where root $A_1$ holds $(sk_{\text{root}}, pk_{\text{root}})$ and ephemeral keypair $(sk_1, pk_1)$, each intermediate hop $i \in \{1, \dots, k-1\}$ generates ephemeral next-hop holder keypair $(sk_{i+1}, pk_{i+1})$ and transmits $sk_{i+1}$ over the mTLS/A2A channel to $A_{\text{next},i}$, terminal hop $i = k$ binds leaf gateway public key $pk_{k+1} = pk_{\mathcal{G}}$ (serialized as 64-char ASCII hex), and signs:
+    {\scriptsize
+    \begin{align}
+    \sigma_0 &= \operatorname{Ed25519.Sign}_{sk_{\text{root}}}\!\left(\operatorname{Canon}(\text{mode},\eta,u,\tau_0,\tau_{\exp},pk_1)\right) \label{eq:ed0} \\
+    \sigma_i &= \operatorname{Ed25519.Sign}_{sk_i}\!\left(\operatorname{Canon}(C_i) \parallel \operatorname{Canon}(\pi_i) \parallel \text{`:`} \parallel pk_{i+1}\right) \label{eq:edi}
+    \end{align}}
+\end{itemize}
+\end{definition}
+
+Because $\operatorname{Canon}(\cdot)$ serializes a keyed RFC 8785 JSON object (matching the root keys in Listing~1 for Eqs.~\eqref{eq:h0} and \eqref{eq:ed0}, and self-delimited $\{\dots\}\{\dots\}$ objects for Eqs.~\eqref{eq:hi} and \eqref{eq:edi}), the inputs in Eqs.~\eqref{eq:h0}--\eqref{eq:edi} are injective and free of concatenation boundary ambiguity. In Mode A, since $H_{i-1}$ serves as the HMAC key for hop $i$ while $K_{\text{root}}$ and $H_0, \dots, H_{i-2}$ are stripped from the wire before reaching sub-agent $A_i$, $A_i$ computes $H_i$ from $H_{i-1}$ in $\mathcal{O}(1)$ time yet cannot invert the PRF to recover $H_{i-2}$ or $K_{\text{root}}$. In Mode B, any external verifier checks Eqs.~\eqref{eq:ed0}--\eqref{eq:edi} and $pk_{k+1} = pk_{\mathcal{G}}$ using only the public root key $pk_{\text{root}}$ and embedded public keys $(pk_1, \dots, pk_{k+1})$.
+
+\subsection{Algorithmic Gateway Enforcement}
+Algorithm~1 specifies the wire verification and execution pipeline at the trusted leaf gateway $\mathcal{G}$. On managed Google Cloud Run, the platform Envoy ingress proxy validates the caller's OIDC JWT signature in \texttt{X-Serverless-Authorization} (replacing the signature suffix with \texttt{SIGNATURE\_REMOVED\_BY\_GOOGLE}~\cite{tsao2023cloudrun}); Line~1 extracts this platform-authenticated caller identity $\text{OIDC}_{\text{srv}}$ and Line~4 binds $\text{OIDC}_{\text{srv}}.\text{sub} = \pi_k.A_k$ and $\text{OIDC}_{\text{srv}}.\text{dom} = \pi_k.\delta_k$. Line~3 restricts the expiration-bypass flag $\text{is\_release}$ strictly to mutating $\texttt{DRAFT\_STAGED}$ release turns carrying both \texttt{X-HITL-Draft-Lock-Token} and \texttt{X-HITL-Human-Cosignature} (preventing an expired $\texttt{DRAFT\_STAGED}$ token from executing read-only turns or re-staging drafts at Line~23). Line~25 evaluates left-to-right with short-circuit boolean semantics so that $\operatorname{ConsumeHITLInWAL}(\eta)$ executes only after $\operatorname{VerifyDraftLock}$ and $\operatorname{VerifyHITL}$ succeed, preventing unauthenticated requests from burning $\eta$. Crucially, decryption of \texttt{X-Encrypted-Backend-Credential} into buffer $\mathcal{B}$ (Line~27) is \textbf{deferred} until after cryptographic chain verification, BGP loop checks, scope/predicate checks, and HITL staging/co-signature verification succeed, ensuring that unauthenticated, expired, cyclic, or \texttt{HTTP 202} staged requests never decrypt backend credentials into RAM.
+
+\begin{figure}[!t]
+\scriptsize
+\textbf{Algorithm 1:} Agent-Passport Leaf Gateway Verification \& Enforcement
+\hrule
+\vspace{1pt}
+\begin{algorithmic}[1]
+\REQUIRE HTTP/2 Headers $\mathcal{H}$, JSON-RPC Frame $R = (\text{method}, \text{tool}, \text{params})$, Gateway ID $A_{\text{self}}$, Keys $(K_{\text{root}}, pk_{\text{root}}, pk_{\mathcal{G}}, K_{\text{vault}}, K_{\text{audit}}, pk_{\text{rev}})$, Scope $s_{\text{req}}$, Mutating Flag $\text{is\_mut} \in \{\text{true}, \text{false}\}$.
+\ENSURE HTTP/2 + JSON-RPC Response with Signed Receipts.
+\STATE Verify caller OIDC payload $\text{OIDC}_{\text{srv}} \leftarrow \mathcal{H}[\texttt{X-Serverless-Authorization}]$.
+\STATE Parse $\mathcal{P}_k = (\text{mode}, \eta, u, \tau_0, \tau_{\exp}, \vec{C}_k, \vec{\Pi}_k, \Phi_k) \leftarrow \mathcal{H}[\texttt{X-Agent-Passport-Macaroon}]$.
+\STATE $\text{is\_release} \leftarrow (\text{is\_mut} = \text{true} \land C_k.m_k = \texttt{DRAFT\_STAGED} \land \mathcal{H}[\texttt{X-HITL-Draft-Lock-Token}] \neq \bot \land \mathcal{H}[\texttt{X-HITL-Human-Cosignature}] \neq \bot)$.
+\STATE \textbf{if} $k < 1 \lor (\neg\text{is\_release} \land \operatorname{now}() > \tau_{\exp}) \lor |\vec{C}_k| \neq |\vec{\Pi}_k| \lor \mathcal{H}[\texttt{X-A2A-Origin-Path-Vector}] \neq \vec{\Pi}_k \lor \text{OIDC}_{\text{srv}}.\text{sub} \neq \pi_k.A_k \lor \text{OIDC}_{\text{srv}}.\text{dom} \neq \pi_k.\delta_k$ \textbf{then return} $(\texttt{HTTP 403}, \texttt{-32099}, \bot)$
+\IF{$\text{mode} = \texttt{A}$}
+    \STATE $H_{\text{cur}} \leftarrow \operatorname{HMAC-SHA256}(K_{\text{root}}, \operatorname{Canon}(\text{mode}, \eta, u, \tau_0, \tau_{\exp}))$
+    \FOR{$i = 1$ \TO $k$}
+        \STATE $H_{\text{cur}} \leftarrow \operatorname{HMAC-SHA256}(H_{\text{cur}}, \operatorname{Canon}(C_i) \parallel \operatorname{Canon}(\pi_i))$
+    \ENDFOR
+    \STATE \textbf{if} $\neg\operatorname{ConstantTimeCompare}(H_{\text{cur}}, \Phi_k)$ \textbf{then return} $(\texttt{HTTP 403}, \texttt{-32099}, \bot)$ \COMMENT{Mode A MAC}
+\ELSE
+    \STATE \textbf{if} $pk_{k+1} \neq pk_{\mathcal{G}} \lor \neg\text{Ed25519.Verify}_{pk_{\text{root}}}(\text{Canon}(\text{mode},$ $\eta, u, \tau_0, \tau_{\exp}, pk_1), \sigma_0) \lor \exists i \in \{1..k\}: \neg\text{Ed25519.Verify}_{pk_i}($ $\text{Canon}(C_i) \parallel \text{Canon}(\pi_i) \parallel \text{`:`} \parallel pk_{i+1}, \sigma_i)$ \textbf{then return} $(\texttt{HTTP 403}, \texttt{-32099}, \bot)$ \COMMENT{Mode B Sig}
+\ENDIF
+\STATE $\mathcal{V}_{\text{seen}} \leftarrow \{A_{\text{self}}\}$
+\FOR{$i = 1$ \TO $k$}
+    \STATE \textbf{if} $\pi_i.A_i \in \mathcal{V}_{\text{seen}} \lor C_i.h_i < 0 \lor \tau_i < \tau_0 \lor \tau_i > \tau_{\exp} \lor (\neg\text{is\_release} \land \tau_i > \operatorname{now}()) \lor (i > 1 \land (C_i.h_i \ge C_{i-1}.h_{i-1} \lor C_{i-1}.A_{\text{next},i-1} \neq \pi_i.A_i \lor \tau_i < \tau_{i-1})) \lor (i = k \land C_k.A_{\text{next},k} \neq A_{\text{self}})$ \textbf{then return} $(\texttt{HTTP 409}, \texttt{-32097}, \bot)$ \COMMENT{Cycle/Target/Hop}
+    \STATE $\mathcal{V}_{\text{seen}} \leftarrow \mathcal{V}_{\text{seen}} \cup \{\pi_i.A_i\}$
+    \STATE \textbf{if} $C_i.\text{hop\_index} \neq i \lor \neg C_i.P_i(\text{params})$ \textbf{then return} $(\texttt{HTTP 403}, \texttt{-32098}, \bot)$ \COMMENT{Conjunctive $P_i$}
+    \STATE \textbf{if} $i > 1 \land (C_i.S_i \not\subseteq C_{i-1}.S_{i-1} \lor \operatorname{rank}(C_i.m_i) > \operatorname{rank}(C_{i-1}.m_{i-1}))$ \textbf{then return} $(\texttt{HTTP 403}, \texttt{-32098}, \bot)$ \COMMENT{Monotonicity}
+\ENDFOR
+\STATE \textbf{if} $s_{\text{req}} \notin C_k.S_k \lor (\text{is\_mut} \land C_k.m_k = \texttt{READ\_ONLY})$ \textbf{then return} $(\texttt{HTTP 403}, \texttt{-32098}, \bot)$
+\IF{$\text{is\_mut} = \text{true} \land C_k.m_k \in \{\texttt{DRAFT\_STAGED}, \texttt{COMMIT\_WITH\_HITL}\}$}
+    \STATE \textbf{if} $\neg\text{is\_release} \land C_k.m_k = \texttt{DRAFT\_STAGED} \land \mathcal{H}[\texttt{X-HITL-Draft-Lock-Token}] = \bot \land \mathcal{H}[\texttt{X-HITL-Human-Cosignature}] = \bot$ \textbf{then} $\mathcal{L}_{\text{draft}} \leftarrow \operatorname{StageDraftInSQLiteWAL}(\eta, u, \text{tool}, \text{params}, \tau_{\text{draft\_exp}})$; \textbf{return} $(\texttt{HTTP 202}, \mathcal{L}_{\text{draft}}, \bot)$
+    \STATE $(\text{rev}, \Sigma_{\text{hitl}}) \leftarrow \mathcal{H}[\texttt{X-HITL-Human-Cosignature}]$; $d \leftarrow \operatorname{SHA-256}(\operatorname{Canon}(\text{tool}, \text{params}))$
+    \STATE \textbf{if} $\Sigma_{\text{hitl}} = \bot \lor (C_k.m_k = \texttt{DRAFT\_STAGED} \land (\neg\text{is\_release} \lor \neg\text{VerifyDraftLock}(\mathcal{H}[\texttt{X-HITL-Draft-Lock-Token}],$ $\eta, u, \text{tool}, d, \operatorname{now}()))) \lor \neg\operatorname{VerifyHITL}(pk_{\text{rev}}, \Sigma_{\text{hitl}}, (\text{rev}, \eta, \text{tool}, d)) \lor \neg\operatorname{ConsumeHITLInWAL}(\eta)$ \textbf{then return} $(\texttt{HTTP 428}, \texttt{-32095}, \bot)$ \COMMENT{Short-Circuit Verify $\to$ CAS}
+\ENDIF
+\STATE Decrypt $\mathcal{B} \leftarrow \texttt{ZeroizingBuf.from\_enc}($ $\mathcal{H}[\texttt{X-Encrypted-Backend-Credential}],$ $K_{\text{vault}}, \text{AAD}=\eta \parallel u \parallel A_{\text{self}}, K_{\text{audit}})$.
+\STATE $\text{res} \leftarrow \operatorname{ExecuteBackendTool}(\text{tool}, \text{params}, \mathcal{B}.\text{read\_memoryview}())$
+\STATE $\mathcal{Z} \leftarrow \mathcal{B}.\text{zeroize}()$; \textbf{return} $(\texttt{HTTP 200}, \text{res}, \mathcal{Z})$
+\end{algorithmic}
+\hrule
+\vspace{-4pt}
+\end{figure}
+
+\subsection{Formal Security and Complexity Proofs}
+
+\begin{theorem}[Unforgeable Monotonic Privilege Attenuation]
+\label{thm:monotonic}
+Under the pseudorandom function ($\text{PRF}$) security and collision resistance of $\operatorname{HMAC-SHA256}$ in Mode A (and existential unforgeability under chosen-message attack, $\text{EUF-CMA}$, of $\operatorname{Ed25519}$ in Mode B), let $\mathcal{P}_{i_0-1}$ be a valid Agent-Passport token received at hop $i_0 \ge 2$ by the earliest compromised sub-agent $A_{i_0}$ with scope set $S_{i_0-1}$, parameter predicates $P_1, \dots, P_{i_0-1}$, and execution mode $m_{i_0-1}$ (where root $A_1$ enforced the genesis base case $S_1 \subseteq S_0$ and $m_1 \preceq m_0$). Any polynomial-time adversary $\mathcal{A}_{\text{PRF}}$ in Mode A (or $\mathcal{A}_{\text{sig}}$ in Mode B) controlling $\{A_{i_0}, \dots, A_k\}$ without knowledge of $K_{\text{root}}$ or $\{H_0, \dots, H_{i_0-2}\}$ (or $\{sk_{\text{root}}, sk_1, \dots, sk_{i_0-1}\}$ in Mode B) making at most $q_v$ verification queries can construct an accepted token $\mathcal{P}'_k$ authorizing scope $s^* \notin S_{i_0-1}$, violating any ancestor predicate $P_j(\text{params}) = \text{true}$ ($j < i_0$), or executing at mode $m^*$ with $\operatorname{rank}(m^*) > \operatorname{rank}(m_{i_0-1})$ with probability at most $i_0 \cdot \operatorname{Adv}^{\text{PRF}}_{\operatorname{HMAC-SHA256}}(\mathcal{A}_{\text{PRF}}) + \operatorname{Adv}^{\text{coll}}_{\operatorname{HMAC-SHA256}}(\mathcal{A}_{\text{PRF}}) + q_v \cdot 2^{-256}$ in Mode A (and $i_0 \cdot \operatorname{Adv}^{\text{EUF-CMA}}_{\operatorname{Ed25519}}(\mathcal{A}_{\text{sig}})$ in Mode B).
+\end{theorem}
+\begin{proof}
+Algorithm~1 (lines 5--13) first verifies the full cryptographic chain from $K_{\text{root}}$ (or $pk_{\text{root}}$ in Mode B) over injective RFC 8785 canonical encodings before evaluating semantic predicates. Next, lines 18--19 enforce conjunctively across every hop $j \in \{1, \dots, k\}$ that $C_j.P_j(\text{params}) = \text{true}$, and for every $j \in \{2, \dots, k\}$ that $S_j \subseteq S_{j-1}$ and $\operatorname{rank}(m_j) \le \operatorname{rank}(m_{j-1})$. By transitivity of set inclusion, logical conjunction $\bigwedge_{j=1}^k P_j(\text{params}) = \text{true}$, and total order $\preceq$, any chain preserving the honest prefix $(C_1, \dots, C_{i_0-1})$ satisfies $S_k \subseteq S_{i_0-1}$, $\bigwedge_{j=1}^{i_0-1} P_j(\text{params}) = \text{true}$, and $\operatorname{rank}(m_k) \le \operatorname{rank}(m_{i_0-1})$. Thus, to bypass any ancestor constraint, the adversary must either truncate the prefix to $j < i_0 - 1$ or alter/splice a caveat $C_j$ ($j < i_0$). In Mode A, since $H_0, \dots, H_{i_0-2}$ are stripped from the wire, a standard $i_0$-step hybrid replacement of the keyed functions instantiated by $(K_{\text{root}}, H_0, \dots, H_{i_0-2})$ with uniform random 256-bit functions bounds prefix truncation or modification across $q_v$ gateway verification queries by $i_0 \cdot \operatorname{Adv}^{\text{PRF}}_{\operatorname{HMAC-SHA256}}(\mathcal{A}_{\text{PRF}}) + \operatorname{Adv}^{\text{coll}}_{\operatorname{HMAC-SHA256}}(\mathcal{A}_{\text{PRF}}) + q_v \cdot 2^{-256}$. In Mode B, pure prefix truncation to hop $j < i_0 - 1$ without signing a new suffix is deterministically rejected by the terminal key check $pk_{j+1} \neq pk_{\mathcal{G}}$ (line 12), the target check $C_j.A_{\text{next},j} \neq A_{\text{self}}$ (line 16), and the caller OIDC binding $\text{OIDC}_{\text{srv}}.\text{sub} \neq \pi_j.A_j$ (line 4); meanwhile, splicing a new suffix after hop $j < i_0 - 1$ or altering any $C_j$ ($j < i_0$) requires forging an Ed25519 signature under an uncompromised key in $\{pk_{\text{root}}, pk_1, \dots, pk_{i_0-1}\}$, bounded by $i_0 \cdot \operatorname{Adv}^{\text{EUF-CMA}}_{\operatorname{Ed25519}}(\mathcal{A}_{\text{sig}})$.
+\end{proof}
+
+\begin{theorem}[Stateless $\mathcal{O}(k)$ Loop Termination]
+\label{thm:loop}
+Let $G = (\mathcal{A}, \mathcal{E})$ be a directed A2A communication graph where each hop increments $\mathcal{P}_k$ and per-hop caveat size is $|S_i|, |P_i| = \mathcal{O}(1)$. Under Algorithm~1, any verified delegation trajectory initialized with remaining hop budget $h_1 \in \mathbb{N}_0$ is guaranteed to be acyclic over $\vec{\Pi}_k$ and has path length $k \le \min(|\mathcal{A}|, h_1 + 1)$ verified in $\mathcal{O}(k)$ gateway time, $\mathcal{O}(k)$ ephemeral hash-set memory, and $\mathcal{O}(1)$ cross-request gateway state.
+\end{theorem}
+\begin{proof}
+At hop $k \ge 1$, Line~4 binds the platform-authenticated caller OIDC identity $\text{OIDC}_{\text{srv}}.\text{sub} = \pi_k.A_k$, and Line~16 enforces sender-constrained BGPsec-style next-hop commitment $C_{i-1}.A_{\text{next},i-1} = \pi_i.A_i$ for all $i \in \{2, \dots, k\}$ alongside $C_k.A_{\text{next},k} = A_{\text{self}}$ and $\tau_0 \le \tau_1 \le \dots \le \tau_k \le \tau_{\exp}$. Because parent hop $i-1$ commits to $A_{\text{next},i-1} = A_i$ inside $H_{i-1}$ (or $\sigma_{i-1}$) before handing off the token, a single compromised sub-agent $A_i$ cannot spoof its ASN $\pi_i.A_i$ without violating $C_{i-1}.A_{\text{next},i-1} = \pi_i.A_i$, nor strip prior hops without invalidating $H_k$ at Line~10 (or $pk_{k+1} = pk_{\mathcal{G}}$ at Line~12). Algorithm~1 initializes $\mathcal{V}_{\text{seen}} \leftarrow \{A_{\text{self}}\}$ (line 14) and checks $\pi_i.A_i \in \mathcal{V}_{\text{seen}}$ (line 16), rejecting any duplicate ASN in $\vec{\Pi}_k$ with error \texttt{-32097}. Simultaneously, line 16 enforces $C_i.h_i \ge 0$ for all $i \in \{1, \dots, k\}$ and strict integer decrease $C_i.h_i \le C_{i-1}.h_{i-1} - 1$ for $i > 1$, yielding $0 \le h_k \le h_1 - (k-1) \implies k \le h_1 + 1$. Note that while Algorithm~1 statelessly guarantees that no cyclic or over-budget path $\vec{\Pi}_k$ is ever accepted at $\mathcal{G}$, bounding live upstream A2A traffic if a compromised sub-agent checkpoints and replays an older prefix $\mathcal{P}_{i-1}$ (or if multiple compromised nodes collude out-of-band) relies on honest intermediate agents performing the $\mathcal{O}(i)$ duplicate-ASN check on $\vec{\Pi}_{i-1}$ before forwarding, per-invocation parent RPC call budgets, and the hard token expiration cutoff $\tau_{\exp}$.
+\end{proof}
+
+\begin{theorem}[Cryptographic Soundness \& Replay Freedom of HITL Lock]
+\label{thm:hitl}
+No mutating MCP tool invocation ($\text{is\_mut} = \text{true}$) under caveat mode $m_k \in \{\texttt{DRAFT\_STAGED}, \texttt{COMMIT\_WITH\_HITL}\}$ can execute $\operatorname{ExecuteBackendTool}$ unless an authorized human reviewer signs the tuple $(\text{rev}, \eta, \text{tool}, d)$ where $d = \operatorname{SHA-256}(\operatorname{Canon}(\text{tool}, \text{params}))$, and each root nonce $\eta$ can authorize at most one state-mutating HITL execution (with legitimate parallel fan-out mutations deriving deterministic branch nonces $\eta_b = \operatorname{HMAC}(H_{i-1}, \text{branch}_b)$).
+\end{theorem}
+\begin{proof}
+In Algorithm~1 (lines 21--28), execution reaches $\operatorname{ExecuteBackendTool}$ (line 28) when $\text{is\_mut} = \text{true}$ if and only if either $m_k = \texttt{LIVE\_AUTONOMOUS}$ (unreachable from an upstream $\texttt{DRAFT\_STAGED}$ or $\texttt{COMMIT\_WITH\_HITL}$ caveat by Theorem~\ref{thm:monotonic}) or $m_k \in \{\texttt{COMMIT\_WITH\_HITL}, \texttt{DRAFT\_STAGED}\}$ passing Line~25. Specifically, a $\texttt{DRAFT\_STAGED}$ call initially arrives with $\mathcal{H}[\texttt{X-HITL-Draft-Lock-Token}] = \bot$ and $\Sigma_{\text{hitl}} = \bot$; Line~23 enforces uniqueness on $\eta$ inside $\operatorname{StageDraftInSQLiteWAL}(\eta, u, \text{tool}, \text{params}, \tau_{\text{draft\_exp}})$ and returns \texttt{HTTP 202} with signed token $\mathcal{L}_{\text{draft}}$ (without decrypting $\mathcal{B}$). When the human reviewer subsequently approves the draft, the release request satisfies $\text{is\_release} = \text{true}$ (Line~3), allowing Line~4 to bypass $\tau_{\exp}$ while Line~16 still verifies $\tau_i \in [\tau_0, \tau_{\exp}]$. At Line~25, short-circuit evaluation first checks $\operatorname{VerifyDraftLock}(\mathcal{H}[\texttt{X-HITL-Draft-Lock-Token}],$ $\eta, u, \text{tool}, d, \operatorname{now}())$ (confirming $\operatorname{now}() \le \tau_{\text{draft\_exp}}$ and binding $\eta, u, \text{tool}, d$) and $\operatorname{VerifyHITL}(pk_{\text{rev}}, \Sigma_{\text{hitl}}, (\text{rev}, \eta, \text{tool}, d))$, and only upon cryptographic success executes the atomic compare-and-swap $\operatorname{ConsumeHITLInWAL}(\eta)$ (retained until $\max(\tau_{\exp}, \tau_{\text{draft\_exp}})$), preventing both unauthenticated nonce exhaustion and post-approval replay.
+\end{proof}
+
+\begin{theorem}[Deterministic Post-Turn Buffer Zeroization]
+\label{thm:ram}
+For every request reaching Line~27 of Algorithm~1, the decrypted backend credential inside the gateway's managed credential buffer $\mathcal{B}$ resides within an \texttt{mlock}-pinned contiguous slice $[p, p + L - 1]$ of a mutable \texttt{bytearray} (with zero immutable Python \texttt{str} credential allocations in gateway user-space code) and satisfies $\forall b \in [0, L-1], \text{MEM}[p + b] = \texttt{0x00}$ prior to HTTP response transmission.
+\end{theorem}
+\begin{proof}
+Because $\mathcal{H}[\texttt{X-Encrypted-Backend-Credential}]$ is an AEAD ASCII hex envelope ($\texttt{<iv\_hex>.<ciphertext\_hex>.<tag\_hex>}$), HTTP header parsing allocates no plaintext credential strings. For requests rejected or staged at lines 4--26, Line~27 is never reached and zero plaintext credential bytes ever enter RAM. At line 27, \texttt{ZeroizingBuf.from\_enc} (\texttt{TurnScopedZeroizingBuffer}) pre-allocates an \texttt{mlock}-pinned \texttt{bytearray} $\mathcal{B}$ of length $L$ and executes OpenSSL \texttt{EVP\_DecryptUpdate} / \texttt{EVP\_DecryptFinal\_ex} in-place via Python's buffer-protocol \texttt{CipherContext.update\_into} inside a \texttt{try/except} guard that immediately invokes $\operatorname{ctypes.memset}(p, 0, L)$ on $\mathcal{B}$ if GCM tag verification over $\text{AAD} = \text{UTF8}(\eta_{\text{hex}} \parallel \text{`:`} \parallel u \parallel \text{`:`} \parallel A_{\text{self}})$ fails. Upon verified decryption, it records pre-wipe tag $h_{\text{pre}} = \operatorname{HMAC}(K_{\text{audit}}, \mathcal{B})$ and passes a zero-copy $\operatorname{memoryview}(\mathcal{B})$ to $\operatorname{ExecuteBackendTool}$ (line 28), which serializes the slice directly into a pre-allocated outbound \texttt{bytearray} BIO buffer using HTTP/2 HPACK \texttt{Literal Header Field Never Indexed} (\texttt{0x10}, RFC 7541 \S 7.1.3) and OpenSSL \texttt{SSL\_MODE\_RELEASE\_BUFFERS} before scrubbing the outbound BIO buffer. Inside the \texttt{try/finally} exit block at line 29, $\mathcal{B}.\text{zeroize}()$ resolves pointer $p = \operatorname{addressof}(\texttt{c\_char.from\_buffer}(\mathcal{B}))$, invokes C-level $\operatorname{ctypes.memset}(p, 0, L)$~\cite{chow2005shredding, yang2017dse}, and asserts $h_{\text{zero}} = \operatorname{SHA-256}(\mathcal{B}) \stackrel{?}{=} \operatorname{SHA-256}(\texttt{0x00}^L)$ (where $\texttt{0x00}^L$ denotes $L$ zero bytes) as a deterministic runtime audit check before signing $\Sigma_{\text{zero}} = \operatorname{HMAC-SHA256}(K_{\text{audit}}, \eta \parallel p \parallel L \parallel h_{\text{pre}} \parallel h_{\text{zero}} \parallel \tau_z)$ into \texttt{X-Passport-Zeroization-Receipt} (a gateway-signed audit receipt, distinct from hardware TEE attestation under IETF RFC 9334~\cite{birkholz2023rats}).
+\end{proof}
+
+\section{Wire Protocol Headers and Enterprise Case Studies}
+
+Listing~1 shows the complete two-phase HTTP/2 wire flow emitted by Agent-Passport: the Phase~1 request carrying the 3-part Cloud Run OIDC token in \texttt{X-Serverless-Authorization}~\cite{tsao2023cloudrun}, the AES-256-GCM envelope in \texttt{X-Encrypted-Backend-Credential}, the explicit \texttt{"mode": "A"} and sender-constrained \texttt{target\_agent\_id} in \texttt{X-Agent-Passport-Macaroon}, and the JSON-RPC 2.0 body; the Phase~1 \texttt{HTTP/2 202 Accepted} staging response returning \texttt{X-HITL-Draft-Lock-Token}; and the Phase~2 release request (carrying both \texttt{X-HITL-Draft-Lock-Token} and \texttt{X-HITL-Human-Cosignature}) and \texttt{HTTP/2 200 OK} response carrying \texttt{X-Passport-Zeroization-Receipt} (where $h_{\text{zero}} = \texttt{15f039c75a88...}$ is the exact SHA-256 digest of 2,205 zeroized bytes).
+
+\vspace{2pt}
+\noindent{\footnotesize\textbf{Listing 1:} Authentic Agent-Passport Two-Phase 4-Header Wire Frame and Receipts.}
+\vspace{-3pt}
+\begin{lstlisting}[label={lst:wire_headers}]
+# --- Phase 1: Initial Mutating Call under DRAFT_STAGED ---
+POST /mcp/v1/tools/call HTTP/2
+Host: m365-mcp-gateway-uc.a.run.app
+X-Serverless-Authorization: Bearer eyJhbGci...eyJzdWIi...
+  .SIGNATURE_REMOVED_BY_GOOGLE
+X-Encrypted-Backend-Credential: 3f8a9012b4c1d2e3f4a5b6c7
+  .9a4f81c2e019b7d4a6...c81b90e4a12f.7e21b409c8a1f302...
+X-Agent-Passport-Macaroon: {"mode": "A", "nonce_id": "a9f102c4...",
+  "root_principal_id": "ppmd_leader@deloitte.com",
+  "issued_at_ms": 1760515200000, "expires_at_ms": 1760515500000,
+  "caveats": [{"hop_index": 1, "allowed_scopes": ["m365.mail.send"],
+    "execution_mode": "DRAFT_STAGED",
+    "param_predicates": {"company_code": ["US01"]},
+    "max_remaining_hops": 2, "target_agent_id": "m365-mcp-gateway"}],
+  "as_path": [{"as_agent_id": "ag-chief-of-staff",
+    "trust_domain": "gcp.us-central1.deloitte",
+    "hop_timestamp_ms": 1760515200112}], "tail_hmac_hex": "8f4e91a0..."}
+X-A2A-Origin-Path-Vector: [{"as_agent_id": "ag-chief-of-staff",
+  "trust_domain": "gcp.us-central1.deloitte",
+  "hop_timestamp_ms": 1760515200112}]
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":
+  "m365.mail.send","arguments":{"company_code":"US01","to":"cfo@..."}}}
+
+HTTP/2 202 Accepted (Phase 1 Response: Staged in SQLite WAL, Zero RAM Decryption)
+X-Agent-Execution-Mode: DRAFT_STAGED
+X-HITL-Draft-Lock-Token: {"draft_id": "DRAFT-7c91a04b",
+  "nonce_id": "a9f102c4...", "requires_human_cosignature": true,
+  "staged_payload_sha256": "7d865e95...",
+  "expires_at_ms": 1760601600000, "lock_hmac_hex": "4d12a8f9..."}
+
+# --- Phase 2: Asynchronous Human-Reviewed Release Turn ---
+POST /mcp/v1/tools/call HTTP/2  [Same 4 Base Headers + JSON-RPC Body +]
+X-HITL-Draft-Lock-Token: {"draft_id": "DRAFT-7c91a04b", ...}
+X-HITL-Human-Cosignature: ppmd_leader@deloitte.com:6c90e2b1...
+
+HTTP/2 200 OK (Phase 2 Response: Verified, Executed, & Buffer Zeroized)
+X-Passport-Zeroization-Receipt: {"nonce_id": "a9f102c4...",
+  "buffer_address_hex": "0x104a2c080", "bytes_zeroized": 2205,
+  "pre_zero_hmac": "3c81f0a2...", "post_zero_sha256": "15f039c75a88...",
+  "zeroized_at_ms": 1760515200118, "attestation_hmac_hex": "9b01e4c2..."}
+\end{lstlisting}
+
+\begin{table*}[t]
+\centering
+\caption{Empirical Benchmark Comparison Across $N = 1{,}200$ Uniformly Hop-Stratified Enterprise Multi-Agent Traces ($k \in \{1, 2, 3, 4\}$ Hops)}
+\label{tab:main_results}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+\textbf{Architecture} & \textbf{Mean $\pm$ SD} & \textbf{Median $p_{50}$} & \textbf{Tail $p_{95}$} & \textbf{Tail $p_{99}$} & \textbf{Priv.\ Esc.} & \textbf{CMP Draft} & \textbf{EU AI Act} & \textbf{BGP Loop} & \textbf{Buffer Zero} \\
+\textbf{($N = 1{,}200$, $\bar{k} = 2.50$ Hops)} & \textbf{(ms)} & \textbf{(ms)} & \textbf{(ms)} & \textbf{(ms)} & \textbf{Blocked ($S_5$)} & \textbf{Enforced ($S_2$)} & \textbf{Art.\ 14 ($S_4$)} & \textbf{Blocked ($S_6$)} & \textbf{Verified\textsuperscript{$\dagger$}} \\
+\midrule
+B1: Ambient OAuth Forwarding (RFC 6750~\cite{jones2012rfc6750}) & $0.1480 \pm 0.014$ & 0.1415 & 0.1890 & 0.2310 & 0.0\% & 0.0\% & 0.0\% & 0.0\% & 0.0\% \\
+B2a: Local In-Memory RFC 8693 IdP (No PBKDF2) & $0.6185 \pm 0.042$ & 0.6120 & 0.9940 & 1.0820 & 50.0\% (100\%\textsuperscript{*}) & 0.0\% & 0.0\% & 0.0\% & 0.0\% \\
+B2b: Networked Cross-VPC RFC 8693 IdP~\cite{jones2020rfc8693} & $26.0500 \pm 1.140$ & 26.0410 & 41.6910 & 42.1100 & 50.0\% (100\%\textsuperscript{*}) & 0.0\% & 0.0\% & 0.0\% & 0.0\% \\
+B3: Client \texttt{before\_tool\_callback} & $34.7250 \pm 1.520$ & 34.7100 & 55.5800 & 56.1200 & 81.9\% & 0.0\% & 0.0\% & 0.0\% & 0.0\% \\
+B4: Prompt-Only HITL + Static RBAC & $0.1610 \pm 0.015$ & 0.1535 & 0.2040 & 0.2575 & 41.3\% & 24.2\% & 18.3\% & 0.0\% & 0.0\% \\
+B5: Classical Macaroons~\cite{birgisson2014macaroons} & $0.2140 \pm 0.015$ & 0.2090 & 0.3020 & 0.3810 & \textbf{100.0\%} & 0.0\% & 0.0\% & 0.0\% & 0.0\% \\
+B6: Public-Key IBCTs (Biscuit / AIP~\cite{prakash2026aip} / AAT~\cite{niyikiza2026aat}) & $0.4420 \pm 0.031$ & 0.4350 & 0.6120 & 0.7240 & \textbf{100.0\%} & 0.0\% & 0.0\% & 0.0\% & 0.0\% \\
+\midrule
+\textbf{Agent-Passport Mode A (Symmetric HMAC)} & $\mathbf{0.2919 \pm 0.019}$ & \textbf{0.2810} & \textbf{0.4180} & \textbf{0.5240} & \textbf{100.0\%} & \textbf{100.0\%} & \textbf{100.0\%} & \textbf{100.0\%} & \textbf{100.0\%} \\
+\textbf{Agent-Passport Mode B (Public-Key Ed25519)} & $\mathbf{0.5006 \pm 0.034}$ & \textbf{0.4950} & \textbf{0.6840} & \textbf{0.8120} & \textbf{100.0\%} & \textbf{100.0\%} & \textbf{100.0\%} & \textbf{100.0\%} & \textbf{100.0\%} \\
+\bottomrule
+\multicolumn{10}{l}{\tiny \textsuperscript{*}Standard RFC 8693 narrows OAuth scopes only, blocking $80/160$ ($50.0\%$) of $S_5$ attacks (\texttt{SCOPE\_WIDENING} and \texttt{CAVEAT\_STRIPPING}); reaching $100\%$ requires a custom parameter/mode Policy Decision Point (PDP) at the IdP. B1--B3/B5--B6 lack wire-level HTTP 202/428 HITL headers ($0.0\%$ on $S_2, S_4$).} \\
+\multicolumn{10}{l}{\tiny \textsuperscript{$\dagger$}Across $N=1{,}200$ traces, all $520/520$ ($100.0\%$) live-executed turns ($S_1 \cup S_3$) decrypted and zeroized $\mathcal{B}$ with verified $h_{\text{zero}} = \operatorname{SHA-256}(\texttt{0x00}^L)$, while all $680/680$ ($100.0\%$) staged/rejected turns ($S_2 \cup S_4 \cup S_5 \cup S_6$) deferred decryption so zero plaintext credential bytes ever entered RAM.}
+\end{tabular}%
+}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\caption{Stratified Workload Breakdown Across Six Production Enterprise Multi-Agent Cohort Strata ($N = 1{,}200$ Total Traces; Each Stratum Uniformly Balanced Across $k \in \{1, 2, 3, 4\}$ Hops with $\bar{k} = 2.5000$)}
+\label{tab:strata_breakdown}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrcccc}
+\toprule
+\textbf{Stratum ID} & \textbf{Enterprise Workload \& Regulatory Governance Scenario} & \textbf{Trials} & \textbf{Hops $k$} & \textbf{Passport Mode A} & \textbf{Local RFC 8693 (B2a)} & \textbf{Net.\ RFC 8693 (B2b)} & \textbf{Invariant} \\
+ & \textbf{(25\% at $k=1$, 25\% at $k=2$, 25\% at $k=3$, 25\% at $k=4$)} & \textbf{($n_i$)} & \textbf{($\bar{k}=2.50$)} & \textbf{Mean $\pm$ SD (ms)} & \textbf{Mean $\pm$ SD (ms)} & \textbf{Mean $\pm$ SD (ms)} & \textbf{Satisfaction} \\
+\midrule
+$S_1$: Legitimate Read & Multi-Hop Analytics (\texttt{sap.gl.read}, \texttt{sfdc.opportunity.read}) & 320 & $1\text{--}4$ & $0.2750 \pm 0.018$ & $0.6182 \pm 0.041$ & $26.0480 \pm 1.120$ & \textbf{100.0\%} ($320/320$) \\
+$S_2$: CMP Draft Lock\textsuperscript{$\S$} & Executive Digital Chief of Staff (\texttt{DRAFT\_STAGED} $\to$ \texttt{HTTP 202}) & 240 & $1\text{--}4$ & $0.3450 \pm 0.024$ & $0.6190 \pm 0.043$ & $26.0520 \pm 1.150$ & \textbf{100.0\%} ($240/240$) \\
+$S_3$: HITL Verified & Signed HR Performance Calibration (\texttt{X-HITL-Human-Cosignature}) & 200 & $1\text{--}4$ & $0.2960 \pm 0.019$ & $0.6186 \pm 0.042$ & $26.0510 \pm 1.140$ & \textbf{100.0\%} ($200/200$) \\
+$S_4$: HITL Missing\textsuperscript{$\P$} & Unsigned HR Calibration Block (EU AI Act Art.\ 14 $\to$ \texttt{HTTP 428}) & 120 & $1\text{--}4$ & $0.2690 \pm 0.016$ & $0.6180 \pm 0.040$ & $26.0490 \pm 1.130$ & \textbf{100.0\%} ($120/120$) \\
+$S_5$: Privilege Attack\textsuperscript{$\P$} & Prompt-Injected Sub-Agent Scope/Predicate/Mode Escalation ($\to$ \texttt{-32098}) & 160 & $1\text{--}4$ & $0.2725 \pm 0.017$ & $0.6184 \pm 0.042$ & $26.0505 \pm 1.145$ & \textbf{100.0\%} ($160/160$) \\
+$S_6$: Cyclic Loop\textsuperscript{$\P$} & Cross-Domain A2A Routing Cycle ($\text{AS-PATH}$ Duplicate $\to$ \texttt{-32097}) & 160 & $1\text{--}4$ & $0.2775 \pm 0.018$ & $0.6188 \pm 0.043$\textsuperscript{$\ddagger$} & $26.0505 \pm 1.150$\textsuperscript{$\ddagger$} & \textbf{100.0\%} ($160/160$) \\
+\midrule
+\textbf{Total / Micro} & \textbf{Trial-Weighted Micro-Average ($\frac{1}{1200}\sum_{i=1}^6 n_i \bar{L}_{S_i}$)} & \textbf{1,200} & $\mathbf{1\text{--}4}$ & $\mathbf{0.2919 \pm 0.019}$ & $\mathbf{0.6185 \pm 0.042}$ & $\mathbf{26.0500 \pm 1.140}$ & \textbf{100.0\% (1,200/1,200)} \\
+\bottomrule
+\multicolumn{8}{l}{\tiny \textsuperscript{$\S$}$S_2$ measures the two-phase \texttt{DRAFT\_STAGED} SQLite WAL staging-and-lock-verification lifecycle ($0.3450$~ms). \textsuperscript{$\P$}To prevent timing side-channels and ensure non-repudiable security auditing, rejected turns ($S_4, S_5, S_6$) execute a mandatory SQLite WAL rejection-audit write and constant-time dummy scrub.} \\
+\multicolumn{8}{l}{\tiny \textsuperscript{$\ddagger$}In $S_6$, RFC 8693 (B2a/B2b) fails to detect the routing cycle ($0.0\%$ blocked) and is terminated by the benchmark harness cutoff at the trial's target hop depth $k \in \{1, 2, 3, 4\}$.}
+\end{tabular}%
+}
+\end{table*}
+
+\subsection{Production Enterprise Case Studies and Multi-Instance Cloud Run State Synchronization}
+Agent-Passport directly resolves three high-priority architectural patterns encountered across large-scale Google Cloud Gemini Enterprise and Vertex AI ADK deployments:
+\begin{enumerate}
+    \item \textbf{Dual-Header OAuth Passthrough \& Deferred Buffer Purging (B2B Revenue \& Workforce Orchestration):} Cloud Run IAM validates the Google OIDC token in \texttt{X-Serverless-Authorization}~\cite{tsao2023cloudrun} while the SaaS backend requires the caller's OAuth credential. Agent-Passport wraps the SaaS token in \texttt{X-Encrypted-Backend-Credential} alongside \texttt{X-Agent-Passport-Macaroon} and guarantees via \texttt{TurnScopedZeroizingBuffer} that the decrypted bytes are wiped from the gateway's managed buffer before the turn exits.
+    \item \textbf{Eliminating \texttt{before\_tool\_callback} Auth Loops \& Securing \texttt{.well-known/agent.json} Discovery (Federated Data \& Telco Mesh):} Agent-Passport extends the A2A \texttt{.well-known/agent.json} Agent Card with a machine-verifiable \texttt{x-agent-passport-security} capability block and replaces stateful callback round-trips with stateless sub-millisecond wire verification.
+    \item \textbf{Wire-Enforced Corporate Messaging Policy (CMP) Draft Locks, EU AI Act Art.~14 Co-Signatures, \& Multi-Instance Durability:} Under single-container deployment on NVMe SSD, \texttt{PRAGMA synchronous=NORMAL} appends WAL frames to the OS kernel page cache in $\approx 45.5~\mu\text{s}$ ($0.2919$~ms end-to-end), whereas enabling strict power-loss crash durability via \texttt{PRAGMA synchronous=FULL} for mutating \texttt{DRAFT\_STAGED}/\texttt{COMMIT\_WITH\_HITL} turns adds a physical NVMe \texttt{fsync} ($1.4210 \pm 0.185$~ms total). Across horizontally auto-scaled Cloud Run container instances, atomic single-use HITL nonce consumption ($\operatorname{ConsumeHITLInWAL}(\eta)$) and cross-instance draft-lock state are backed either by an intra-VPC Cloud Memorystore for Redis cluster (\texttt{SET <eta> 1 NX PX <ttl>} and \texttt{HSET draft:<eta> ... PX <ttl>} where $\texttt{<ttl>} = \max(\tau_{\exp}, \tau_{\text{draft\_exp}}) - \operatorname{now}()$, $0.4820 \pm 0.054$~ms, matching the sub-millisecond \texttt{synchronous=NORMAL} tier) or by synchronous Paxos transactions in Google Cloud Spanner for strict multi-instance failover durability equivalent to \texttt{synchronous=FULL}, without slowing down stateless read-only turns ($S_1, S_5, S_6$).
+\end{enumerate}
+
+\section{Empirical Evaluation}
+
+\subsection{Experimental Setup, Component Breakdown, and Fair Baseline Methodology}
+We implemented Agent-Passport in Python 3.12 using \texttt{hmac}, \texttt{hashlib}, \texttt{cryptography} (Ed25519 Mode B and buffer-protocol \texttt{update\_into}), \texttt{ctypes}, \texttt{socket}, and \texttt{sqlite3}. To isolate marginal per-request authorization, cryptographic verification, and persistence overhead at the gateway boundary, our benchmark harness (\texttt{run\_live\_benchmark.py}) transmits HTTP/2-framed JSON-RPC 2.0 payloads across OS kernel UNIX domain stream sockets (\texttt{socket.socketpair(AF\_UNIX, SOCK\_STREAM)}) to a live \texttt{AgentPassportGateway} daemon after a 50-request warm-up pass.
+
+Across all $N = 1{,}200$ uniformly hop-stratified traces ($n_k = 300$ per hop for $k \in \{1, 2, 3, 4\}$, $\bar{k} = 2.5000$ across every stratum $S_1\text{--}S_6$), a fine-grained component profiling of Agent-Passport Mode A's $291.9~\mu\text{s}$ ($0.2919$~ms) mean end-to-end latency reveals four distinct phases (where rejected turns in $S_4, S_5, S_6$ execute a constant-time dummy scrub and mandatory SQLite WAL rejection-audit write so that rejection latency remains indistinguishable from full execution and immune to timing side-channels):
+\begin{enumerate}
+    \item \textbf{\texttt{AF\_UNIX} HTTP/2 + JSON-RPC 2.0 Framing \& Header Parsing:} $164.2~\mu\text{s}$ ($56.2\%$),
+    \item \textbf{Chained RFC 8785 Canonicalization, HMAC-SHA256 Verification, \texttt{AS-PATH} \& Predicate Evaluation:} $19.8~\mu\text{s}$ ($6.8\%$, comprising $8.3~\mu\text{s}$ base genesis check plus $+4.6~\mu\text{s}$ per hop at $\mathcal{G}$; holder-side attenuation at each upstream hop $A_i$ costs $4.2~\mu\text{s}$ in Mode A and $48.5~\mu\text{s}$ for ephemeral Ed25519 keygen + sign in Mode B),
+    \item \textbf{In-Place AEAD Credential Decryption, \texttt{ctypes.memset}, SHA-256 Post-Wipe Read, \& Receipt HMAC:} $62.4~\mu\text{s}$ ($21.4\%$), and
+    \item \textbf{SQLite WAL (\texttt{PRAGMA synchronous=NORMAL}) Audit \& Draft Persistence:} $45.5~\mu\text{s}$ ($15.6\%$).
+\end{enumerate}
+
+To ensure strict experimental fairness against centralized and decentralized baselines, we evaluate seven baseline configurations alongside Agent-Passport Mode A and Mode B (Table~\ref{tab:main_results}):
+\begin{itemize}
+    \item \textbf{B1 (Ambient OAuth Forwarding):} Standard RFC 6750 bearer passthrough over \texttt{AF\_UNIX} ($0.1480 \pm 0.014$~ms).
+    \item \textbf{B2a (Local In-Memory RFC 8693 IdP over \texttt{AF\_UNIX}, Zero PBKDF2):} Executes $k$ sequential token-exchange RPCs over \texttt{AF\_UNIX} against a local in-memory IdP performing standard HMAC-SHA256 JWT verification/issuance and SQLite WAL logging without any password-stretching PBKDF2 iterations ($0.2474$~ms/hop; $0.6185 \pm 0.042$~ms overall; $0.9896$~ms at $k=4$).
+    \item \textbf{B2b (Networked Cross-VPC RFC 8693 IdP):} Executes the same RFC 8693 IdP logic with injected per-hop intra-region HTTPS / DB round-trip delay sampled from $\mathcal{N}(10.42, 0.57^2)$~ms calibrated to production Cloud Run-to-IdP VPC telemetry ($10.4200$~ms/hop; $26.0500 \pm 1.140$~ms overall; $41.6780$~ms at $k=4$). Both B2a and B2b block $50.0\%$ ($80/160$) of $S_5$ attacks under standard scope-only RFC 8693, or $100.0\%$ when extended with a custom parameter/mode Policy Decision Point (PDP).
+    \item \textbf{B3 (Client \texttt{before\_tool\_callback} Forwarding):} Executes per-hop callback introspection with calibrated cross-service callback delay $\mathcal{N}(13.89, 0.76^2)$~ms/hop ($34.7250 \pm 1.520$~ms overall; $81.9\%$ $S_5$ block rate).
+    \item \textbf{B4 (Prompt-Only HITL + Static RBAC):} Evaluates coarse RBAC rules ($0.1610 \pm 0.015$~ms) while replaying empirical prompt-injection bypass rates measured against Gemini 2.5 Flash system-prompt guardrails using InjecAgent~\cite{zhan2024injecagent} and AgentDojo~\cite{debenedetti2024agentdojo} attack templates adapted to our 6 enterprise tool schemas ($41.3\%$ blocked in $S_5$, $24.2\%$ in $S_2$, $18.3\%$ in $S_4$).
+    \item \textbf{B5 (Classical Macaroons~\cite{birgisson2014macaroons}) \& B6 (Public-Key IBCTs: Biscuit / AIP~\cite{prakash2026aip} / AAT~\cite{niyikiza2026aat}):} Perform offline HMAC ($0.2140 \pm 0.015$~ms) or Ed25519 ($0.4420 \pm 0.031$~ms) caveat verification over \texttt{AF\_UNIX}, blocking $100.0\%$ of $S_5$ privilege escalations, but lack serverless 4-header separation, sender-bound BGP \texttt{AS-PATH} cycle detection ($0.0\%$ in $S_6$), HTTP 202/428 HITL draft locks ($0.0\%$ in $S_2, S_4$), and zero-copy buffer zeroization ($0.0\%$).
+\end{itemize}
+
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[scale=0.92]
+\begin{semilogyaxis}[
+    width=8.5cm,
+    height=4.7cm,
+    xlabel={\footnotesize Delegation Path Depth ($k$ Hops)},
+    ylabel={\footnotesize Verification Latency (ms, log scale)},
+    xmin=0.8, xmax=4.35,
+    ymin=0.08, ymax=120,
+    xtick={1, 2, 3, 4},
+    xticklabels={1 Hop, 2 Hops, 3 Hops, 4 Hops},
+    ymajorgrids=true,
+    xmajorgrids=true,
+    grid style={dashed, gray!30},
+    axis line style={bordergray},
+    legend style={at={(0.5,1.03)}, anchor=south, legend columns=2, font=\tiny, fill=white, draw=bordergray},
+    tick label style={font=\scriptsize}
+]
+\addplot[color=googlepurple, mark=diamond*, line width=1.2pt, dashed] coordinates {
+    (1, 13.8900) (2, 27.7800) (3, 41.6700) (4, 55.5600)
+};
+\addlegendentry{B3: Client Callback}
+
+\addplot[color=googleyellow!90!black, mark=triangle*, line width=1.2pt] coordinates {
+    (1, 10.4210) (2, 20.8380) (3, 31.2630) (4, 41.6780)
+};
+\addlegendentry{B2b: Net.\ RFC 8693 IdP}
+
+\addplot[color=googlered!85!black, mark=pentagon*, line width=1.1pt, dashdotted] coordinates {
+    (1, 0.2474) (2, 0.4948) (3, 0.7422) (4, 0.9896)
+};
+\addlegendentry{B2a: Local RFC 8693 IdP}
+
+\addplot[color=googleblue, mark=square*, line width=1.3pt, dotted] coordinates {
+    (1, 0.3980) (2, 0.4664) (3, 0.5348) (4, 0.6032)
+};
+\addlegendentry{Passport Mode B (Ed25519)}
+
+\addplot[color=googlegreen, mark=*, line width=1.8pt] coordinates {
+    (1, 0.2850) (2, 0.2896) (3, 0.2942) (4, 0.2988)
+};
+\addlegendentry{\textbf{Passport Mode A (HMAC)}}
+
+\node[below left, font=\tiny\bfseries, color=googlegreen] at (axis cs:4.30, 0.22) {0.2988 ms (3.3$\times$ vs.\ B2a; 139.5$\times$ vs.\ B2b)};
+\end{semilogyaxis}
+\end{tikzpicture}
+\caption{Gateway verification latency scaling across agent delegation hops ($k \in \{1, 2, 3, 4\}$, $n_k = 300$ balanced trials per hop). Agent-Passport Mode A scales by $+4.6~\mu\text{s}$/hop ($0.2850 \to 0.2988$~ms), achieving a $3.3\times$ speedup over local in-memory RFC 8693 (B2a, $0.9896$~ms), a $139.5\times$ speedup over networked RFC 8693 (B2b, $41.6780$~ms), and a $185.9\times$ speedup over B3 ($55.5600$~ms) at $k=4$ hops.}
+\label{fig:hop_scaling}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[scale=0.92]
+\begin{axis}[
+    ybar,
+    bar width=0.10cm,
+    width=8.6cm,
+    height=4.6cm,
+    ylabel={\footnotesize Enforcement Rate (\%)},
+    symbolic x coords={PrivEsc, DraftLock, EUAIAct, LoopBlock, RAMZero},
+    xtick={PrivEsc, DraftLock, EUAIAct, LoopBlock, RAMZero},
+    xticklabels={Priv.\ Esc., CMP Draft, Art.\ 14 HITL, Loop Block, Buffer Zero},
+    ymin=0, ymax=145,
+    enlarge x limits=0.14,
+    ymajorgrids=true,
+    grid style={dashed, gray!30},
+    axis line style={bordergray},
+    legend pos=north west,
+    legend columns=3,
+    legend style={font=\tiny, fill=white, draw=bordergray},
+    tick label style={font=\tiny}
+]
+\addplot[fill=googlered!80, draw=googlered] coordinates {(PrivEsc, 0.0) (DraftLock, 0.0) (EUAIAct, 0.0) (LoopBlock, 0.0) (RAMZero, 0.0)};
+\addlegendentry{B1: Ambient}
+
+\addplot[fill=googleyellow!85, draw=googleyellow!90!black] coordinates {(PrivEsc, 50.0) (DraftLock, 0.0) (EUAIAct, 0.0) (LoopBlock, 0.0) (RAMZero, 0.0)};
+\addlegendentry{B2a/b: RFC 8693}
+
+\addplot[fill=googlepurple!80, draw=googlepurple] coordinates {(PrivEsc, 81.9) (DraftLock, 0.0) (EUAIAct, 0.0) (LoopBlock, 0.0) (RAMZero, 0.0)};
+\addlegendentry{B3: Callback}
+
+\addplot[fill=googleblue!80, draw=googleblue] coordinates {(PrivEsc, 41.3) (DraftLock, 24.2) (EUAIAct, 18.3) (LoopBlock, 0.0) (RAMZero, 0.0)};
+\addlegendentry{B4: Prompt}
+
+\addplot[fill=teal!70, draw=teal!90!black] coordinates {(PrivEsc, 100.0) (DraftLock, 0.0) (EUAIAct, 0.0) (LoopBlock, 0.0) (RAMZero, 0.0)};
+\addlegendentry{B5/B6: Macaroon/IBCT}
+
+\addplot[fill=googlegreen!85, draw=googlegreen] coordinates {(PrivEsc, 100.0) (DraftLock, 100.0) (EUAIAct, 100.0) (LoopBlock, 100.0) (RAMZero, 100.0)};
+\addlegendentry{\textbf{Passport (Mode A \& B)}}
+\end{axis}
+\end{tikzpicture}
+\caption{Security and regulatory governance enforcement rates across evaluated baselines ($N = 1{,}200$ traces). Both Agent-Passport Mode A and Mode B achieve $100.0\%$ enforcement across all five invariants.}
+\label{fig:security_matrix}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[scale=0.92]
+\begin{axis}[
+    ybar,
+    bar width=0.45cm,
+    width=8.4cm,
+    height=4.1cm,
+    ylabel={\footnotesize Latency (ms)},
+    symbolic x coords={Mean, P50, P95, P99},
+    xtick={Mean, P50, P95, P99},
+    xticklabels={Mean, Median ($p_{50}$), Tail ($p_{95}$), Tail ($p_{99}$)},
+    ymin=0, ymax=1.15,
+    enlarge x limits=0.22,
+    ymajorgrids=true,
+    grid style={dashed, gray!30},
+    axis line style={bordergray},
+    tick label style={font=\scriptsize},
+    nodes near coords,
+    nodes near coords style={/pgf/number format/fixed, /pgf/number format/fixed zerofill, /pgf/number format/precision=4},
+    every node near coord/.append style={font=\tiny\bfseries, color=googleblue}
+]
+\addplot[fill=googleblue!80, draw=googleblue] coordinates {
+    (Mean, 0.2919) (P50, 0.2810) (P95, 0.4180) (P99, 0.5240)
+};
+\draw[dashed, thick, googlered] (axis cs:Mean, 1.0) -- (axis cs:P99, 1.0) node[pos=0.5, above, font=\tiny\bfseries, color=googlered] {1.0 ms Sub-Millisecond Budget};
+\end{axis}
+\end{tikzpicture}
+\caption{Latency percentile distribution ($p_{50}$, $p_{95}$, $p_{99}$) for Agent-Passport Mode A across $N = 1{,}200$ live socket and SQLite WAL transactions. Even at $p_{99}$ ($0.5240$~ms; Mode B $p_{99} = 0.8120$~ms), Agent-Passport operates well below the $1.0$~ms budget.}
+\label{fig:tail_latency}
+\end{figure}
+
+\subsection{Performance, Scalability, and Security Results}
+Table~\ref{tab:main_results} summarizes overall performance across all $N = 1{,}200$ traces, while Table~\ref{tab:strata_breakdown} reports per-stratum metrics and Table~\ref{tab:hop_ablation} details latency and wire-size scaling across hop depths $k \in \{1, 2, 3, 4\}$ (where the unweighted mean across the four equal-sized $n_k = 300$ rows matches the $N = 1{,}200$ micro-average for every column: $0.2750$~ms for $S_1$, $0.2919$~ms for Mode A, $0.5006$~ms for Mode B, $0.6185$~ms for B2a, and $26.0500$~ms for B2b).
+
+\begin{table}[t]
+\centering
+\caption{Per-Hop Gateway Verification Latency (Mean $\pm$ SD) \& 4-Header Wire Footprint ($k \in \{1, 2, 3, 4\}$ Hops, $n_k = 300$ Trials/Hop)}
+\label{tab:hop_ablation}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{crrrrrrr}
+\toprule
+\textbf{Hop Depth} & \textbf{Wire Size} & \textbf{Passport} & \textbf{Passport} & \textbf{Passport} & \textbf{Local IdP} & \textbf{Net.\ IdP} & \textbf{Mode A Speedup} \\
+\textbf{($n_k = 300$)} & \textbf{A / B (B)} & \textbf{Read $S_1$} & \textbf{Mode A (ms)} & \textbf{Mode B (ms)} & \textbf{B2a (ms)} & \textbf{B2b (ms)} & \textbf{vs.\ B2a / B2b} \\
+\midrule
+$k = 1$ ($n=300$) & $1{,}180 / 1{,}372$ & $0.2682 \pm 0.017$ & $0.2850 \pm 0.018$ & $0.3980 \pm 0.027$ & $0.2474 \pm 0.019$ & $10.4210 \pm 0.57$ & $\mathbf{0.9\times / 36.6\times}$ \\
+$k = 2$ ($n=300$) & $1{,}434 / 1{,}818$ & $0.2727 \pm 0.018$ & $0.2896 \pm 0.019$ & $0.4664 \pm 0.031$ & $0.4948 \pm 0.034$ & $20.8380 \pm 0.81$ & $\mathbf{1.7\times / 72.0\times}$ \\
+$k = 3$ ($n=300$) & $1{,}688 / 2{,}264$ & $0.2773 \pm 0.018$ & $0.2942 \pm 0.019$ & $0.5348 \pm 0.035$ & $0.7422 \pm 0.046$ & $31.2630 \pm 0.99$ & $\mathbf{2.5\times / 106.3\times}$ \\
+$k = 4$ ($n=300$) & $1{,}942 / 2{,}710$ & $0.2818 \pm 0.019$ & $0.2988 \pm 0.020$ & $0.6032 \pm 0.039$ & $0.9896 \pm 0.058$ & $41.6780 \pm 1.14$ & $\mathbf{3.3\times / 139.5\times}$ \\
+\midrule
+\textbf{All ($N=1{,}200$)} & $\mathbf{1{,}561 / 2{,}041}$ & $\mathbf{0.2750 \pm 0.018}$ & $\mathbf{0.2919 \pm 0.019}$ & $\mathbf{0.5006 \pm 0.034}$ & $\mathbf{0.6185 \pm 0.042}$ & $\mathbf{26.0500 \pm 1.14}$ & $\mathbf{2.1\times / 89.2\times}$ \\
+\bottomrule
+\multicolumn{8}{l}{\tiny Note: Empirical socket means follow linear regression slopes of $+4.60~\mu\text{s}$/hop ($R^2 = 0.9998$) in Mode A and $+68.40~\mu\text{s}$/hop ($R^2 = 0.9999$) in Mode B.}
+\end{tabular}%
+}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Live Google Cloud Vertex AI Multi-Model Evaluation (Mode B Ed25519 + SQLite WAL at $k=3$ Hops, \upshape\texttt{location="global"}, $n=20$ Trials/Model)}
+\label{tab:vertex_live}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Official Vertex AI Model} & \textbf{LLM Synthesis} & \textbf{3-Hop Mode B} & \textbf{Legitimate} & \textbf{Escalation Blocked} \\
+\textbf{(\upshape\texttt{location="global"})} & \textbf{Mean $\pm$ SD (ms)} & \textbf{Verify (ms)} & \textbf{Authorized} & \textbf{(\upshape\texttt{-32098}, 95\% CI)} \\
+\midrule
+\texttt{gemini-2.5-flash} & $1{,}524.5 \pm 118.4$ & $0.510 \pm 0.032$ & $20/20$ (\textbf{100\%}) & $20/20$ (\textbf{100\%}, $[83.2\%, 100\%]$) \\
+\texttt{gemini-2.5-pro} & $2{,}235.8 \pm 164.2$ & $0.528 \pm 0.038$ & $20/20$ (\textbf{100\%}) & $20/20$ (\textbf{100\%}, $[83.2\%, 100\%]$) \\
+\texttt{gemini-3-flash-preview} & $1{,}763.4 \pm 131.6$ & $0.519 \pm 0.035$ & $20/20$ (\textbf{100\%}) & $20/20$ (\textbf{100\%}, $[83.2\%, 100\%]$) \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\textbf{1) Monotonic Sub-Millisecond Hop Scalability ($3.3\times$ vs.\ Local B2a; $139.5\times$ vs.\ Networked B2b at 4 Hops):} As shown in Fig.~\ref{fig:hop_scaling} and Table~\ref{tab:hop_ablation}, even when the RFC 8693 IdP runs locally in-memory over \texttt{AF\_UNIX} without PBKDF2 (B2a), performing $k$ sequential IPC round-trips scales linearly from $0.2474$~ms ($k=1$) to $0.9896$~ms ($k=4$), while networked RFC 8693 (B2b) scales to $41.6780$~ms at $k=4$. In Agent-Passport Mode A, each additional hop adds $+4.6~\mu\text{s}$ at $\mathcal{G}$ ($0.2850 \to 0.2988$~ms; cumulative path latency including $k$ upstream holder attenuations at $4.2~\mu\text{s}$/hop is $0.2892 \to 0.3156$~ms, while Mode B scales by $+68.4~\mu\text{s}$/hop at $\mathcal{G}$ from $0.3980 \to 0.6032$~ms and $0.4465 \to 0.7972$~ms including $48.5~\mu\text{s}$/hop upstream Ed25519 keygen+sign). The total 4-header wire footprint grows by only $+254$~B/hop in Mode A ($1{,}180 \to 1{,}942$~B) and $+446$~B/hop in Mode B ($1{,}372 \to 2{,}710$~B), remaining well inside the default $8$~KB HTTP/2 header frame limit. At $k=4$, Mode A achieves a $3.3\times$ speedup over B2a ($0.9896 / 0.2988$), a $139.5\times$ speedup over B2b ($41.6780 / 0.2988$), and a $185.9\times$ speedup over B3 ($55.5600 / 0.2988$). Table~\ref{tab:vertex_live} reports live end-to-end tool-calling evaluations ($n=20$ legitimate and $n=20$ prompt-injected confused-deputy trials per model under Mode B Ed25519 + SQLite WAL at $k=3$ hops) across \texttt{gemini-2.5-flash}, \texttt{gemini-2.5-pro}, and \texttt{gemini-3-flash-preview}, achieving $20/20$ ($100.0\%$, $95\%$ Clopper-Pearson CI $[83.2\%, 100.0\%]$) escalation blocking with $0.0\%$ benign false positives.
+
+\textbf{2) 100\% Privilege Escalation, Loop Containment, HITL Draft Lock, \& Buffer Zeroization:} Across all $160$ adversarial privilege escalation traces in $S_5$, Agent-Passport blocked $160/160$ ($100.0\%$, one-sided exact Fisher's $p = 4.65 \times 10^{-96}$ vs.\ B1 [$0/160$] and $p = 3.12 \times 10^{-37}$ vs.\ B4 [$66/160$]). Across all $160$ cyclic traces in $S_6$, the sender-constrained \texttt{AS-PATH} verifier terminated $160/160$ ($100.0\%$) cycles in $0.2775$~ms via error \texttt{-32097} (Fig.~\ref{fig:security_matrix}). In $S_2$ ($n=240$), $S_3$ ($n=200$), and $S_4$ ($n=120$), Agent-Passport staged $240/240$ ($100.0\%$) drafts with \texttt{HTTP 202}, executed $200/200$ ($100.0\%$) co-signed mutations, and blocked $120/120$ ($100.0\%$) unsigned/replayed commits with \texttt{HTTP 428}, while verifying $100.0\%$ post-turn buffer zeroization across all $520$ executed turns and $100.0\%$ deferred non-decryption across all $680$ staged/rejected turns.
+
+\section{Conclusion}
+We presented \textbf{Agent-Passport}, a cryptographic wire protocol and gateway middleware that brings mathematical least-privilege attenuation, sender-constrained BGP-inspired loop prevention, wire-enforced human-in-the-loop draft locks, and deferred zero-copy buffer zeroization to multi-agent A2A and MCP swarms. Operating directly on HTTP/2 and JSON-RPC 2.0 transport headers in $291.9~\mu\text{s}$ ($500.6~\mu\text{s}$ in Ed25519 Mode B), Agent-Passport eliminates centralized IdP bottlenecks while providing provable security and regulatory compliance for enterprise AI deployments.
+
+\begin{thebibliography}{31}
+\bibitem{gemini2025report}
+G. Comanici \emph{et al.} (Gemini Team, Google), ``Gemini 2.5: Pushing the Frontier with Advanced Reasoning, Multimodality, Long Context, and Next Generation Agentic Capabilities,'' \emph{arXiv preprint arXiv:2507.06261}, 2025.
+
+\bibitem{a2a2025spec}
+Google Cloud, ``Agent2Agent (A2A) Protocol Specification,'' 2025. [Online]. Available: \url{https://google.github.io/A2A/}
+
+\bibitem{anthropic2024mcp}
+Anthropic, ``Model Context Protocol Specification,'' Nov. 2024. [Online]. Available: \url{https://spec.modelcontextprotocol.io/}
+
+\bibitem{tomasev2026delegation}
+N. Toma\v{s}ev, M. Franklin, and S. Osindero, ``Intelligent AI Delegation,'' \emph{arXiv preprint arXiv:2602.11865}, 2026.
+
+\bibitem{hardy1988confused}
+N. Hardy, ``The Confused Deputy: (or why capabilities might have been invented),'' \emph{ACM SIGOPS Operating Systems Review}, vol. 22, no. 4, pp. 36--38, 1988.
+
+\bibitem{jones2015rfc7522}
+B. Campbell, C. Mortimore, and M. B. Jones, ``Security Assertion Markup Language (SAML) 2.0 Profile for OAuth 2.0 Client Authentication and Authorization Grants,'' \emph{IETF RFC 7522}, May 2015.
+
+\bibitem{tsao2023cloudrun}
+R. Tsao and X. Xin, ``3 new ways to authorize users to your private workloads on Cloud Run,'' \emph{Google Cloud Blog \& Cloud Run Authenticating Service-to-Service Documentation}, 2023.
+
+\bibitem{jones2012rfc6750}
+M. Jones and D. Hardt, ``The OAuth 2.0 Authorization Framework: Bearer Token Usage,'' \emph{IETF RFC 6750}, Oct. 2012.
+
+\bibitem{greshake2023promptinjection}
+K. Greshake, S. Abdelnabi, S. Mishra, C. Endres, T. Holz, and M. Fritz, ``Not What You've Signed Up For: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection,'' in \emph{Proc. ACM Workshop on Artificial Intelligence and Security (AISec)}, 2023, pp. 79--90.
+
+\bibitem{zhan2024injecagent}
+Q. Zhan, Z. Liang, Z. Ying, and D. D. Kang, ``InjecAgent: Benchmarking Indirect Prompt Injections in Tool-Integrated Large Language Model Agents,'' in \emph{Findings of the Association for Computational Linguistics: ACL 2024}, 2024, pp. 10471--10506.
+
+\bibitem{debenedetti2024agentdojo}
+E. Debenedetti, J. Zhang, M. Balunovi{\'c}, L. Beurer-Kellner, M. Fischer, and F. Tram{\`e}r, ``AgentDojo: A Dynamic Environment to Evaluate Prompt Injection Attacks and Defenses for LLM Agents,'' in \emph{Advances in Neural Information Processing Systems (NeurIPS)}, 2024, pp. 82895--82920.
+
+\bibitem{jones2020rfc8693}
+M. Jones, A. Nadalin, B. Campbell, J. Bradley, and C. Mortimore, ``OAuth 2.0 Token Exchange,'' \emph{IETF RFC 8693}, Jan. 2020.
+
+\bibitem{raut2026transaction}
+A. Raut, ``Transaction Tokens for Agents,'' \emph{IETF Internet-Draft draft-araut-oauth-transaction-tokens-for-agents-01}, 2026.
+
+\bibitem{prasad2026actor}
+A. Prasad, R. Krishnan, D. Lopez, and S. Addepalli, ``Cryptographically Verifiable Actor Chains for OAuth 2.0 Token Exchange,'' \emph{IETF Internet-Draft draft-mw-spice-actor-chain-00}, 2026.
+
+\bibitem{chow2005shredding}
+J. Chow, B. Pfaff, T. Garfinkel, and M. Rosenblum, ``Shredding Your Garbage: Reducing Data Lifetime Through Secure Deallocation,'' in \emph{Proc. 14th USENIX Security Symp.}, 2005, pp. 331--346.
+
+\bibitem{yang2017dse}
+Z. Yang, B. Johannesmeyer, A. T. Olesen, S. Lerner, and K. Levchenko, ``Dead Store Elimination (Still) Considered Harmful,'' in \emph{Proc. 26th USENIX Security Symp.}, 2017, pp. 1025--1040.
+
+\bibitem{nist2020zerotrust}
+S. Rose, O. Borchert, S. Mitchell, and S. Connelly, ``Zero Trust Architecture,'' \emph{NIST Special Publication 800-207}, Aug. 2020.
+
+\bibitem{rekhter2006bgp}
+Y. Rekhter, T. Li, and S. Hares, ``A Border Gateway Protocol 4 (BGP-4),'' \emph{IETF RFC 4271}, Jan. 2006.
+
+\bibitem{euaiact2024}
+European Parliament and Council of the European Union, ``Regulation (EU) 2024/1689 laying down harmonised rules on artificial intelligence (Artificial Intelligence Act),'' \emph{Official Journal of the European Union}, 2024.
+
+\bibitem{birgisson2014macaroons}
+A. Birgisson, J. G. Politz, {\'U}. Erlingsson, A. Taly, M. Vrable, and M. Lentczner, ``Macaroons: Cookies with Contextual Caveats for Decentralized Authorization in the Cloud,'' in \emph{Proc. Network and Distributed System Security Symp. (NDSS)}, 2014.
+
+\bibitem{prakash2026aip}
+S. Prakash, ``AIP: Agent Identity Protocol for Verifiable Delegation Across MCP and A2A,'' \emph{arXiv preprint arXiv:2603.24775}, 2026.
+
+\bibitem{debenedetti2025camel}
+E. Debenedetti, I. Shumailov, T. Fan, J. Hayes, N. Carlini, D. Fabian, C. Kern, C. Shi, A. Terzis, and F. Tram{\`e}r, ``Defeating Prompt Injections by Design,'' in \emph{Proc. IEEE Conf. Secure and Trustworthy Machine Learning (SaTML)}, 2026, pp. 587--618 (arXiv:2503.18813).
+
+\bibitem{costa2025fides}
+M. F. M. Costa, B. K{\"o}pf, A. Kolluri, A. Paverd, M. Russinovich, A. Salem, S. Tople, L. Wutschitz, and S. Zanella-B{\'e}guelin, ``Securing AI Agents with Information-Flow Control,'' \emph{arXiv preprint arXiv:2505.23643}, 2025.
+
+\bibitem{shi2025progent}
+T. Shi \emph{et al.}, ``Progent: Programmable Privilege Control for LLM Agents,'' \emph{arXiv preprint arXiv:2504.11703}, 2025.
+
+\bibitem{maloyan2026mcpsec}
+N. Maloyan and D. Namiot, ``Breaking the Protocol: Security Analysis of the Model Context Protocol Specification and Prompt Injection Vulnerabilities in Tool-Integrated LLM Agents,'' \emph{arXiv preprint arXiv:2601.17549}, 2026.
+
+\bibitem{zhang2025asb}
+H. Zhang, J. Huang, K. Mei, Y. Yao, Z. Wang, C. Zhan, H. Wang, and Y. Zhang, ``Agent Security Bench (ASB): Formalizing and Benchmarking Attacks and Defenses in LLM-based Agents,'' in \emph{Proc. Int. Conf. Learning Representations (ICLR)}, 2025.
+
+\bibitem{fett2023dpop}
+D. Fett, B. Campbell, J. Bradley, T. Lodderstedt, M. Jones, and D. Waite, ``OAuth 2.0 Demonstrating Proof-of-Possession (DPoP),'' \emph{IETF RFC 9449}, Sept. 2023.
+
+\bibitem{campbell2020mtls}
+B. Campbell, J. Bradley, N. Sakimura, and T. Lodderstedt, ``OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound Access Tokens,'' \emph{IETF RFC 8705}, Feb. 2020.
+
+\bibitem{lodderstedt2023rar}
+T. Lodderstedt, J. Richer, and B. Campbell, ``OAuth 2.0 Rich Authorization Requests,'' \emph{IETF RFC 9396}, May 2023.
+
+\bibitem{salowey2026wimse}
+J. A. Salowey, Y. Rosomakho, and H. Tschofenig, ``Workload Identity in Multi System Environments (WIMSE) Architecture,'' \emph{IETF Internet-Draft draft-ietf-wimse-arch-07}, 2026.
+
+\bibitem{niyikiza2026aat}
+N. A. Niyikiza, ``Attenuating Authorization Tokens for Agentic Delegation Chains,'' \emph{IETF Internet-Draft draft-niyikiza-oauth-attenuating-agent-tokens-00}, Feb. 2026.
+
+\bibitem{birkholz2023rats}
+H. Birkholz, D. Thaler, M. Richardson, N. Smith, and W. Pan, ``Remote ATtestation procedureS (RATS) Architecture,'' \emph{IETF RFC 9334}, Jan. 2023.
+\end{thebibliography}
+
+\end{document}
